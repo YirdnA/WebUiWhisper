@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ name }} — WebUiWhisper{% endblock %}
+{% block content %}
+<header>
+  <hgroup>
+    <h2 style="word-break:break-all">Editing {{ name }}</h2>
+    <p>
+      lang <strong>{{ payload.language }}</strong>
+      · {{ payload.segments|length }} segments
+      · timings are read-only; you can edit speaker label and text per row.
+    </p>
+  </hgroup>
+  <p>
+    <a role="button" class="secondary" href="/transcripts/{{ name }}">Cancel</a>
+    <button type="submit" form="edit-form">Save (creates backup version)</button>
+  </p>
+</header>
+
+<form method="post" action="/transcripts/{{ name }}/edit" id="edit-form" class="edit-form">
+  <input type="hidden" name="{{ csrf_field_name() }}" value="{{ request.state.csrf_token }}">
+  <ul class="seg-list edit">
+    {% for seg in payload.segments %}
+    <li class="seg-item">
+      <div class="seg-meta">
+        <span class="ts">{{ seg.start_time }} → {{ seg.end_time }}</span>
+        <input type="text" name="speaker_{{ loop.index0 }}" class="speaker-edit"
+               value="{{ seg.speaker }}" maxlength="32" placeholder="speaker">
+      </div>
+      <textarea name="text_{{ loop.index0 }}" rows="2" class="text-edit">{{ seg.text }}</textarea>
+    </li>
+    {% endfor %}
+  </ul>
+  <p>
+    <button type="submit">Save (creates backup version)</button>
+    <a role="button" class="secondary" href="/transcripts/{{ name }}">Cancel</a>
+  </p>
+</form>
+{% endblock %}

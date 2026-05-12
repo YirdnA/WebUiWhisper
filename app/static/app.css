@@ -1,0 +1,218 @@
+/* WebUiWhisper — app-specific styling on top of Pico (dark theme). */
+
+:root {
+  --ww-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+body { font-feature-settings: "tnum" 1; }
+
+/* App shell ---------------------------------------------------------------- */
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 14rem 1fr;
+  gap: 1.25rem;
+  min-height: 100vh;
+}
+.app-shell > aside {
+  border-right: 1px solid var(--pico-muted-border-color);
+  padding: 1rem 0.75rem;
+}
+.app-shell > main { padding: 1rem 1.25rem; }
+
+@media (max-width: 800px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .app-shell > aside { border-right: none; border-bottom: 1px solid var(--pico-muted-border-color); }
+}
+
+nav.sidebar a {
+  display: block;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--pico-secondary);
+}
+nav.sidebar a.active, nav.sidebar a:hover { background: var(--pico-card-sectioning-background-color); color: var(--pico-color); }
+
+/* Bulk action bar ---------------------------------------------------------- */
+
+.bulk-bar {
+  margin: .5rem 0;
+  padding: .5rem .9rem;
+  display: flex; gap: .75rem; align-items: center;
+  border: 1px solid rgba(231,76,60,.4);
+  background: rgba(231,76,60,.08);
+  border-radius: 8px;
+}
+.bulk-bar button { margin: 0; padding: .3rem 1rem; }
+table.transcripts .select-col { width: 2rem; }
+table.transcripts .select-col input { margin: 0; }
+
+/* Filter bar --------------------------------------------------------------- */
+
+.filter-bar {
+  margin: .75rem 0 1rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: 8px;
+}
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: .5rem 1rem;
+  margin-bottom: .5rem;
+}
+.filter-grid label { font-size: .8rem; color: var(--pico-secondary); margin: 0; }
+.filter-grid input, .filter-grid select { margin: .15rem 0 0; }
+.filter-actions { display: flex; gap: .5rem; align-items: center; }
+.filter-actions button { margin: 0; padding: .35rem 1rem; }
+
+/* Tables ------------------------------------------------------------------- */
+
+table.transcripts { font-variant-numeric: tabular-nums; }
+table.transcripts th { cursor: pointer; user-select: none; }
+table.transcripts th[data-sort="asc"]::after { content: " ▲"; opacity: .6; }
+table.transcripts th[data-sort="desc"]::after { content: " ▼"; opacity: .6; }
+table.transcripts td.num { text-align: right; font-family: var(--ww-mono); }
+table.transcripts td.filename { word-break: break-all; }
+
+/* Health card -------------------------------------------------------------- */
+
+.health-card {
+  display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 0.75rem;
+  font-size: .9rem;
+}
+.health-card dt { color: var(--pico-secondary); }
+.health-card dd { margin: 0; font-family: var(--ww-mono); }
+.health-pill {
+  display: inline-block; padding: 0 .5rem; border-radius: 1rem;
+  font-size: .75rem; line-height: 1.4rem;
+}
+.health-pill.ok { background: rgba(46, 204, 113, .15); color: #2ecc71; }
+.health-pill.warn { background: rgba(241, 196, 15, .15); color: #f1c40f; }
+.health-pill.fail { background: rgba(231, 76, 60, .15); color: #e74c3c; }
+
+/* Speaker chips ------------------------------------------------------------ */
+
+.seg-list { list-style: none; padding: 0; margin: 0; }
+.seg-list li { padding: .5rem .25rem; border-bottom: 1px solid var(--pico-muted-border-color); }
+.seg-list li:last-child { border-bottom: none; }
+.seg-list .ts {
+  font-family: var(--ww-mono); font-size: .8rem; color: var(--pico-secondary);
+  margin-right: .5rem;
+}
+.speaker-chip {
+  display: inline-block; padding: 0 .55rem; margin-right: .5rem;
+  border-radius: 1rem; font-size: .78rem; line-height: 1.4rem;
+  font-family: var(--ww-mono);
+}
+/* Eight deterministic palette slots; speaker.py picks by hash. */
+.spk-0 { background: #6a89cc; color: #fff; }
+.spk-1 { background: #e58e26; color: #fff; }
+.spk-2 { background: #38ada9; color: #fff; }
+.spk-3 { background: #b8336a; color: #fff; }
+.spk-4 { background: #7f8c8d; color: #fff; }
+.spk-5 { background: #8e44ad; color: #fff; }
+.spk-6 { background: #16a085; color: #fff; }
+.spk-7 { background: #d35400; color: #fff; }
+.spk-unknown { background: #444; color: #ddd; }
+
+/* Audit -------------------------------------------------------------------- */
+
+table.audit { font-family: var(--ww-mono); font-size: .85rem; }
+table.audit td.ts { white-space: nowrap; color: var(--pico-secondary); }
+table.audit td.ip { white-space: nowrap; }
+table.audit td.action { font-weight: 600; }
+
+/* Badges + re-diarize box -------------------------------------------------- */
+
+.badge {
+  display: inline-block; padding: 0 .55rem; border-radius: 1rem;
+  font-size: .72rem; line-height: 1.4rem;
+  background: rgba(106,137,204,.18); color: #6a89cc;
+}
+.rediarize-box {
+  margin: .5rem 0; padding: .5rem .9rem;
+  border: 1px solid var(--pico-muted-border-color); border-radius: 8px;
+}
+.rediarize-box summary { cursor: pointer; font-weight: 600; }
+.rediarize-form { display: flex; gap: .75rem; align-items: end; flex-wrap: wrap; margin-top: .5rem; }
+.rediarize-form label { font-size: .8rem; color: var(--pico-secondary); margin: 0; }
+.rediarize-form select { margin: .15rem 0 0; min-width: 8rem; }
+.rediarize-form button { margin: 0; }
+.rediarize-form .hint { flex-basis: 100%; font-size: .8rem; color: var(--pico-secondary); margin: .25rem 0 0; }
+
+/* Audio player ------------------------------------------------------------- */
+
+.ww-audio { width: 100%; margin-top: .5rem; }
+.audio-missing { color: var(--pico-secondary); font-style: italic; font-size: .85rem; }
+
+/* Segments — active/playing state ------------------------------------------ */
+
+.seg-list .seg-item { cursor: pointer; transition: background-color 100ms ease-out; }
+.seg-list .seg-item:hover { background: rgba(255,255,255,.03); }
+.seg-list .seg-item.playing {
+  background: rgba(106,137,204,.18);
+  border-left: 3px solid #6a89cc;
+  padding-left: calc(.25rem - 3px + .5rem);
+}
+
+/* Progress banner ---------------------------------------------------------- */
+
+.progress-banner {
+  margin: .75rem 0 1rem;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--pico-card-background-color);
+}
+.progress-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .5rem .9rem;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  background: var(--pico-card-sectioning-background-color);
+}
+.progress-phase {
+  font-family: var(--ww-mono); font-size: .78rem;
+  padding: .1rem .6rem; border-radius: 1rem;
+  background: rgba(127,140,141,.25); color: var(--pico-color);
+}
+.progress-phase[data-phase="transcribe"] { background: rgba(46,204,113,.2); color: #2ecc71; }
+.progress-phase[data-phase="diarize"]    { background: rgba(241,196,15,.2);  color: #f1c40f; }
+.progress-phase[data-phase="merge"]      { background: rgba(106,137,204,.2); color: #6a89cc; }
+.progress-phase[data-phase="done"]       { background: rgba(46,204,113,.2);  color: #2ecc71; }
+.progress-phase[data-phase="info"]       { background: rgba(127,140,141,.25);}
+.progress-phase[data-phase="error"]      { background: rgba(231,76,60,.2);   color: #e74c3c; }
+.progress-phase[data-phase="disconnected"]{ background: rgba(231,76,60,.2);  color: #e74c3c; }
+
+.progress-log {
+  max-height: 12rem; overflow: auto;
+  padding: .35rem .9rem;
+  font-family: var(--ww-mono); font-size: .78rem; line-height: 1.4;
+}
+.progress-log .log-line { white-space: pre-wrap; word-break: break-word; }
+.progress-log .log-line[data-phase="error"]      { color: #e74c3c; }
+.progress-log .log-line[data-phase="done"]       { color: #2ecc71; }
+.progress-log .log-line[data-phase="transcribe"] { color: #2ecc71; opacity: .9; }
+.progress-log .log-line[data-phase="diarize"]    { color: #f1c40f; opacity: .9; }
+.progress-log .log-line[data-phase="merge"]      { color: #6a89cc; opacity: .9; }
+
+/* Editor ------------------------------------------------------------------- */
+
+.edit-form .seg-list.edit .seg-item { display: block; padding: .5rem .25rem; }
+.edit-form .seg-meta {
+  display: flex; gap: .75rem; align-items: center; margin-bottom: .25rem;
+}
+.edit-form .speaker-edit {
+  font-family: var(--ww-mono); font-size: .85rem;
+  padding: .15rem .5rem; margin: 0; max-width: 12rem;
+}
+.edit-form .text-edit {
+  width: 100%; margin: 0; font-size: .95rem;
+}
+
+/* Flash messages ----------------------------------------------------------- */
+
+.flash { padding: .6rem .9rem; border-radius: 6px; margin: .5rem 0; }
+.flash.ok { background: rgba(46, 204, 113, .12); border: 1px solid rgba(46, 204, 113, .4); }
+.flash.err { background: rgba(231, 76, 60, .12); border: 1px solid rgba(231, 76, 60, .4); }

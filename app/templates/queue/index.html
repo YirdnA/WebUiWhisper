@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Queue — WebUiWhisper{% endblock %}
+{% block content %}
+<header>
+  <h2>Queue</h2>
+  <p>Files waiting to be (or currently being) transcribed. Refreshes every 5 s.</p>
+</header>
+
+{% include "partials/progress_banner.html" %}
+
+<div
+  id="queue-table"
+  hx-get="/queue"
+  hx-trigger="every 5s"
+  hx-swap="outerHTML">
+  {% include "queue/_list.html" %}
+</div>
+{% endblock %}

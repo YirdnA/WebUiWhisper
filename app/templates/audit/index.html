@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Audit log — WebUiWhisper{% endblock %}
+{% block content %}
+<header>
+  <h2>Audit log</h2>
+  <p>Most recent {{ rows|length }} entries (limit {{ limit }}, offset {{ offset }}).</p>
+</header>
+{% if rows %}
+<table class="audit striped">
+  <thead>
+    <tr>
+      <th>Time</th>
+      <th>IP</th>
+      <th>User</th>
+      <th>Action</th>
+      <th>Target</th>
+      <th>OK</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td class="ts">{{ r.ts }}</td>
+      <td class="ip">{{ r.ip or "-" }}</td>
+      <td>{{ r.user or "-" }}</td>
+      <td class="action">{{ r.action }}</td>
+      <td>{{ r.target or "-" }}</td>
+      <td>{{ "✓" if r.ok else "✗" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<nav>
+  {% if offset > 0 %}
+    <a href="/audit?limit={{ limit }}&offset={{ [offset - limit, 0]|max }}">← newer</a>
+  {% endif %}
+  {% if rows|length == limit %}
+    <a href="/audit?limit={{ limit }}&offset={{ offset + limit }}" style="float:right">older →</a>
+  {% endif %}
+</nav>
+{% else %}
+<p>No audit entries.</p>
+{% endif %}
+{% endblock %}

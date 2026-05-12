@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Transcripts — WebUiWhisper{% endblock %}
+{% block content %}
+{% set bulk_done = request.query_params.get("bulk_done") %}
+{% if bulk_done %}
+  <div class="flash ok">
+    Bulk {{ bulk_done }}: {{ request.query_params.get("n") }} transcript{{ "s" if request.query_params.get("n") != "1" else "" }}.
+  </div>
+{% endif %}
+
+<header>
+  <h2>Transcripts</h2>
+  <p>
+    {{ items|length }} transcript{{ "s" if items|length != 1 else "" }}{% if any_filter_active %} (filtered){% endif %}.
+    Auto-refreshes every 30 s (pauses while something is selected).
+  </p>
+</header>
+
+<form method="get" action="/transcripts" class="filter-bar" role="search">
+  <div class="filter-grid">
+    <label>Search
+      <input type="text" name="q" value="{{ filters.q }}" placeholder="filename substring">
+    </label>
+    <label>Language
+      <select name="lang">
+        <option value="">any</option>
+        {% for code in languages %}
+          <option value="{{ code }}" {% if filters.lang == code %}selected{% endif %}>{{ code }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Speakers ≥
+      <input type="number" name="spk_min" min="0" max="64" value="{{ filters.spk_min }}">
+    </label>
+    <label>Speakers ≤
+      <input type="number" name="spk_max" min="0" max="64" value="{{ filters.spk_max }}">
+    </label>
+    <label>From
+      <input type="date" name="since" value="{{ filters.since }}">
+    </label>
+    <label>To
+      <input type="date" name="until" value="{{ filters.until }}">
+    </label>
+  </div>
+  <div class="filter-actions">
+    <button type="submit">Apply</button>
+    {% if any_filter_active %}
+      <a role="button" class="secondary" href="/transcripts">Clear</a>
+    {% endif %}
+  </div>
+</form>
+
+<form method="post" action="/transcripts/bulk" id="bulk-form">
+  <input type="hidden" name="{{ csrf_field_name() }}" value="{{ request.state.csrf_token }}">
+  <input type="hidden" name="action" id="bulk-action" value="">
+
+  <div id="bulk-bar" class="bulk-bar" hidden>
+    <strong><span id="bulk-count">0</span> selected</strong>
+    <button type="button" data-bulk-action="archive" class="secondary">Archive</button>
+    <button type="button" data-bulk-action="delete" class="contrast">Delete</button>
+  </div>
+
+  <div
+    id="transcripts-table"
+    hx-get="/transcripts?{{ {'q':filters.q,'lang':filters.lang,'spk_min':filters.spk_min,'spk_max':filters.spk_max,'since':filters.since,'until':filters.until} | urlencode }}"
+    hx-trigger="every 30s [document.querySelectorAll('.bulk-check:checked').length===0]"
+    hx-swap="outerHTML">
+    {% include "transcripts/_list.html" %}
+  </div>
+</form>
+
+<script src="/static/bulk.js" defer></script>
+{% endblock %}

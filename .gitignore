@@ -1,0 +1,22 @@
+.env
+.env.local
+.env.*.local
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+.idea/
+.vscode/
+.DS_Store
+
+# Local tooling — Claude Code per-project permissions, not for the repo.
+.claude/
+

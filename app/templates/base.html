@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>{% block title %}WebUiWhisper{% endblock %}</title>
+  <link rel="stylesheet" href="/static/pico.min.css">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside>
+      <hgroup>
+        <h3 style="margin-bottom:0">WebUiWhisper</h3>
+        <p style="font-size:.8rem;color:var(--pico-secondary);margin:0">
+          {{ user or "anonymous" }}
+        </p>
+      </hgroup>
+      <nav class="sidebar">
+        <a href="/transcripts" class="{{ 'active' if page == 'transcripts' else '' }}">Transcripts</a>
+        <a href="/queue"       class="{{ 'active' if page == 'queue' else '' }}">Queue</a>
+        <a href="/upload"      class="{{ 'active' if page == 'upload' else '' }}">Upload</a>
+        <a href="/audit"       class="{{ 'active' if page == 'audit' else '' }}">Audit log</a>
+      </nav>
+      <hr>
+      <section
+        hx-get="/health"
+        hx-trigger="load, every 10s"
+        hx-swap="innerHTML"
+        aria-label="Whisper service health">
+        <progress></progress>
+      </section>
+    </aside>
+    <main>
+      {% block flash %}{% endblock %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

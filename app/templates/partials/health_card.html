@@ -1,0 +1,14 @@
+{% if status == "ok" %}
+<dl class="health-card">
+  <dt>Status</dt><dd><span class="health-pill ok">ok</span></dd>
+  <dt>Device</dt><dd>{{ data.device }}</dd>
+  <dt>CPU 1m</dt><dd>{{ "%.2f"|format(data.cpu_load_1min) }}</dd>
+  <dt>RAM free</dt><dd>{{ "%.2f"|format(data.ram_available_gb) }} GB</dd>
+  <dt>Models</dt><dd>{{ data.models_loaded | join(", ") }}</dd>
+</dl>
+{% else %}
+<dl class="health-card">
+  <dt>Status</dt><dd><span class="health-pill fail">fail</span></dd>
+  <dt>Error</dt><dd>{{ data.error or "upstream unreachable" }}</dd>
+</dl>
+{% endif %}

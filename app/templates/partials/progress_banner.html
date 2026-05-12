@@ -1,0 +1,9 @@
+{# Live progress banner driven by /progress/stream (SSE). #}
+<section id="ww-progress" class="progress-banner" aria-label="Live whisper service progress">
+  <header class="progress-header">
+    <strong>Whisper service</strong>
+    <span class="progress-phase" data-phase="">idle</span>
+  </header>
+  <div class="progress-log" aria-live="polite"></div>
+</section>
+<script src="/static/progress.js" defer></script>

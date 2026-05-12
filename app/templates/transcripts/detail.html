@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ name }} — WebUiWhisper{% endblock %}
+{% block content %}
+{% if request.query_params.get("rediar") == "queued" %}
+  <div class="flash ok">
+    Re-diarization queued. Watch progress on <a href="/queue">/queue</a>; reload this page when it finishes.
+  </div>
+{% endif %}
+{% if request.query_params.get("saved") == "1" %}
+  <div class="flash ok">Saved. Earlier version preserved as <code>{{ name }}.json.v{{ request.query_params.get("v") }}</code>.</div>
+{% endif %}
+
+<header>
+  <hgroup>
+    <h2 style="word-break:break-all">{{ name }}</h2>
+    <p>
+      lang <strong>{{ payload.language }}</strong>
+      ({{ "%.0f"|format((payload.language_confidence or 0) * 100) }}%)
+      · duration {{ "%.1f"|format(payload.duration_sec / 60) }} m
+      · processed {{ "%.1f"|format(payload.processing_sec / 60) }} m
+      · model {{ payload.model_used }}
+      {% if payload.rediarized_at %}
+        · <span class="badge">re-diarized {{ payload.rediarized_at }}</span>
+      {% endif %}
+      {% if payload.edited_at %}
+        · <span class="badge">edited {{ payload.edited_at }}</span>
+      {% endif %}
+    </p>
+  </hgroup>
+  <p>
+    <a role="button" class="secondary" href="/transcripts/{{ name }}/download.txt">Download TXT</a>
+    <a role="button" class="secondary" href="/transcripts/{{ name }}/download.json">Download JSON</a>
+    <a role="button" class="secondary" href="/transcripts/{{ name }}/download.srt">Download SRT</a>
+    <a role="button" href="/transcripts/{{ name }}/edit">Edit</a>
+  </p>
+
+  <details class="rediarize-box">
+    <summary>Re-diarize</summary>
+    <form method="post" action="/rediarize" class="rediarize-form">
+      <input type="hidden" name="{{ csrf_field_name() }}" value="{{ request.state.csrf_token }}">
+      <input type="hidden" name="name" value="{{ name }}">
+      <label>Number of speakers (hint)
+        <select name="num_speakers">
+          <option value="">auto</option>
+          {% for n in range(1, 11) %}
+            <option value="{{ n }}">{{ n }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit">Re-diarize</button>
+      <p class="hint">Re-runs pyannote on the original audio (must be in <code>/backup/</code> or <code>/calls/</code>) and rewrites this transcript's segments. Takes minutes to hours depending on length.</p>
+    </form>
+  </details>
+
+  <audio id="ww-audio" class="ww-audio" controls preload="metadata"
+         src="/audio/{{ name }}">
+  </audio>
+  <p id="audio-missing" class="audio-missing" hidden>
+    Original audio not available (likely past the 6-day backup window).
+  </p>
+</header>
+<ul class="seg-list">
+  {% for seg in payload.segments %}
+  <li class="seg-item" data-start="{{ seg.start_sec }}" data-end="{{ seg.end_sec }}">
+    <span class="ts">{{ seg.start_time }}</span>
+    <span class="speaker-chip {{ speaker_class(seg.speaker) }}">{{ speaker_label(seg.speaker) }}</span>
+    <span>{{ seg.text }}</span>
+  </li>
+  {% endfor %}
+</ul>
+<script src="/static/audio-sync.js" defer></script>
+{% endblock %}

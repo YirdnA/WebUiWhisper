@@ -1,0 +1,39 @@
+# Local-development compose. Runs webuiwhisper alone.
+#
+# WHISPER_API_URL (set in .env) points at either:
+#   - the on-host whisper service     → http://host.docker.internal:8000
+#   - a developer-supplied mock         → http://host.docker.internal:9999
+#   - another reachable endpoint
+#
+# Production deployment adds webuiwhisper as a third service to the whisper
+# service's compose file so they share an internal network. That's a separate
+# file (see README.md "Production deployment"); this one is for `git clone`
+# + `docker compose up` ergonomics only.
+
+services:
+  webuiwhisper:
+    build: .
+    image: webuiwhisper:dev
+    container_name: webuiwhisper
+    ports:
+      - "127.0.0.1:8001:8001"
+    env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./dev-data/calls:/calls:rw
+      - ./dev-data/transcripts:/transcripts:ro
+      - ./dev-data/backup:/backup:ro
+      - webuiwhisper_state:/var/lib/webuiwhisper
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    cpus: "0.5"
+    restart: unless-stopped
+
+volumes:
+  webuiwhisper_state:

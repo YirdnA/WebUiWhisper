@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Upload — WebUiWhisper{% endblock %}
+{% block content %}
+<header>
+  <h2>Upload audio</h2>
+  <p>
+    The file is dropped into the watched <code>/calls/</code> directory; the
+    existing watcher picks it up and transcribes it.
+    Allowed: WAV / MP3 / FLAC / OGG / M4A / MP4 / WebM, up to {{ max_upload_mb }} MB.
+  </p>
+</header>
+<form method="post" enctype="multipart/form-data" action="/upload">
+  <input type="hidden" name="{{ csrf_field_name() }}" value="{{ request.state.csrf_token }}">
+  <label for="audio-file">Audio file
+    <input id="audio-file" type="file" name="file" required
+           accept=".wav,.mp3,.flac,.ogg,.m4a,.mp4,.webm,audio/*,video/mp4,video/webm">
+  </label>
+  <label for="model-select">Model
+    <select id="model-select" name="model">
+      <option value="auto" selected>auto (watcher default)</option>
+      {% for m in allowed_models %}
+        <option value="{{ m }}">{{ m }}</option>
+      {% endfor %}
+    </select>
+    <small>
+      <strong>large-v3</strong> is the highest quality (≈ real-time on CPU).
+      <strong>large-v3-turbo</strong> is ~2× faster but slightly less accurate
+      on long-form non-English.
+    </small>
+  </label>
+  <button type="submit">Queue for transcription</button>
+</form>
+{% endblock %}
