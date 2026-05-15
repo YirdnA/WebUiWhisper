@@ -49,6 +49,27 @@ def _parse_iso_date(s: str | None, *, end_of_day: bool = False) -> float | None:
     return _dt.datetime.combine(d, t, tzinfo=_dt.timezone.utc).timestamp()
 
 
+def _parse_opt_int(s: str, *, lo: int, hi: int, field: str) -> int | None:
+    """Coerce a query-string value to an int. Empty string => None.
+
+    FastAPI's `int | None = Query(...)` rejects empty strings with 422, but
+    the HTML form submits empty fields as `spk_min=&spk_max=`. We accept str
+    here and coerce ourselves so the form round-trips cleanly.
+    """
+    s = (s or "").strip()
+    if not s:
+        return None
+    try:
+        n = int(s)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"{field} must be an integer") from exc
+    if not (lo <= n <= hi):
+        raise HTTPException(
+            status_code=400, detail=f"{field} out of range ({lo}..{hi})"
+        )
+    return n
+
+
 @router.get("", response_class=HTMLResponse)
 @limiter.limit("60/minute")
 async def list_view(
@@ -57,25 +78,28 @@ async def list_view(
     settings: Settings = Depends(settings_dep),
     q: str = Query(default="", max_length=200),
     lang: str = Query(default="", max_length=10),
-    spk_min: int | None = Query(default=None, ge=0, le=64),
-    spk_max: int | None = Query(default=None, ge=0, le=64),
+    spk_min: str = Query(default="", max_length=4),
+    spk_max: str = Query(default="", max_length=4),
     since: str = Query(default="", max_length=10),
     until: str = Query(default="", max_length=10),
 ):
+    spk_min_n = _parse_opt_int(spk_min, lo=0, hi=64, field="spk_min")
+    spk_max_n = _parse_opt_int(spk_max, lo=0, hi=64, field="spk_max")
+
     items = list_transcripts(settings)
     languages = sorted({t.language for t in items if t.language and t.language != "?"})
     items = filter_transcripts(
         items,
         q=q, lang=lang,
-        speakers_min=spk_min, speakers_max=spk_max,
+        speakers_min=spk_min_n, speakers_max=spk_max_n,
         since_epoch=_parse_iso_date(since),
         until_epoch=_parse_iso_date(until, end_of_day=True),
     )
     items.sort(key=lambda t: t.mtime, reverse=True)
     filters = {
         "q": q, "lang": lang,
-        "spk_min": spk_min if spk_min is not None else "",
-        "spk_max": spk_max if spk_max is not None else "",
+        "spk_min": spk_min_n if spk_min_n is not None else "",
+        "spk_max": spk_max_n if spk_max_n is not None else "",
         "since": since, "until": until,
     }
     any_filter_active = any(v not in ("", None) for v in filters.values())
