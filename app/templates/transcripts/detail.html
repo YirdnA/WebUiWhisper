@@ -18,7 +18,23 @@
 
 <header>
   <hgroup>
-    <h2 style="word-break:break-all" title="{{ name }}">{{ name | pretty_name }}</h2>
+    <h2 class="rename-target" data-name="{{ name }}" style="word-break:break-all" title="{{ name }}">
+      <span class="rename-display">{{ name | display_name }}</span>
+      <button type="button" class="rename-edit secondary outline" aria-label="Rename" title="Rename">✎</button>
+      <button type="button" class="rename-auto secondary outline" aria-label="Auto-name from summary" title="Auto-name from summary (uses local LLM)">✨</button>
+    </h2>
+    <form class="rename-form" hidden method="post"
+          action="/transcripts/{{ name }}/display-name">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <input type="text" name="display_name" maxlength="200"
+             value="{{ name | display_name }}">
+      <button type="submit">Save</button>
+      <button type="button" class="rename-cancel secondary outline">Cancel</button>
+      <button type="button" class="contrast outline rename-reset">Reset to default</button>
+    </form>
+    {% if request.query_params.get("renamed") == "1" %}
+      <p class="flash ok inline">Renamed.</p>
+    {% endif %}
     <p>
       lang <strong>{{ payload.language }}</strong>
       ({{ "%.0f"|format((payload.language_confidence or 0) * 100) }}%)
@@ -142,4 +158,5 @@
 </ul>
 <script src="/static/audio-sync.js" defer></script>
 <script src="/static/speaker-toggle.js" defer></script>
+<script src="/static/rename.js" defer></script>
 {% endblock %}
