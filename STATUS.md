@@ -31,3 +31,33 @@ Plan: `/home/chai/.claude/plans/cp-cannot-stat-env-example-fizzy-sprout.md`
 - 2026-05-20 — moving on to D4 (project-local Claude Code skill).
 - 2026-05-20 — **D4 DONE** — commit `69cdae2`. Project-local skill at `.claude/skills/transcript-enrich/` with SKILL.md + run.py importing app.enrich. .gitignore loosened so skill ships in-repo. CLI verified.
 - 2026-05-20 — moving on to D5 (UI/UX polish).
+- 2026-05-20 — **D5 DONE** — commit `7cb19ec`. Detail-page breadcrumb, in-page seg search, speaker switches, sticky table headers, Proc → Processing, sidebar relabels + status framing, drag-and-drop upload. Deferred items (ETA on queue, column auto-toggle, auto-apply on filter) noted in commit message. 191/191 pass. All key pages 200.
+
+## All batches complete
+
+| Batch | Commit | Status |
+|---|---|---|
+| Tier C WIP | `66a92c6` | DONE |
+| D1 AAC | `31bd441` | DONE |
+| D7 archive + delete | `cb0074b` | DONE |
+| D2 enrich backend | `9fd6efa` | DONE |
+| D3 enrich UI | `b496a07` | DONE |
+| D6 auto-name + rename | `9a99982` | DONE |
+| D4 skill | `69cdae2` | DONE |
+| D5 UI polish | `7cb19ec` | DONE |
+
+Total: 8 commits, all local on `main`. Push was blocked by the auto-mode classifier; run `git push origin main` to send them all upstream.
+
+## Operator actions on return
+
+1. **`git push origin main`** — 8 commits waiting locally.
+2. **Restart Ollama on the host** so the container can reach it. Currently binds 127.0.0.1 only. Restart with `OLLAMA_HOST=0.0.0.0:11434`. The webuiwhisper container already has the right docker bridge configured (host.docker.internal → 172.17.0.1 via host-gateway). After this single change, /settings/enrich + /transcripts/{name}/enrich + the ✨ auto-name button + the project-local skill all start producing real LLM output. No app restart needed.
+3. **`/opt/whisper/` is not a git repo** on this host — the watcher edits (AUDIO_EXTS, tests) and the docker-compose.yml edits (`/transcripts:rw`, `extra_hosts`) are not version-controlled here. Sync them to your canonical copy. Files edited:
+   - `/opt/whisper/watcher/watcher.py` (line 3 doc-string + line 50 AUDIO_EXTS)
+   - `/opt/whisper/watcher/tests/test_watcher_retry.py` (two new tests)
+   - `/opt/whisper/docker-compose.yml` (`/transcripts:rw`, `extra_hosts` for webuiwhisper)
+4. Pages worth eyeballing post-push:
+   - `/transcripts` — Live/Archived tabs + inline ⬇ + Tags column
+   - any `/transcripts/<name>` — breadcrumb, rename header (✎/✨), search-this-transcript, enrich `<details>` panel, speaker switches, downloads
+   - `/settings/enrich` — toggle list
+   - `/upload` — drag-and-drop overlay
