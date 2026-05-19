@@ -18,5 +18,9 @@ venv/
 .DS_Store
 
 # Local tooling — Claude Code per-project permissions, not for the repo.
+# (Allow the project-local skills dir to ship in-repo so the skill is
+#  available to anyone who clones this app.)
 .claude/
+!.claude/skills/
+!.claude/skills/**
 

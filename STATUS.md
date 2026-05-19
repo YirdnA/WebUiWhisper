@@ -27,3 +27,5 @@ Plan: `/home/chai/.claude/plans/cp-cannot-stat-env-example-fizzy-sprout.md`
 - 2026-05-20 — moving on to D3 (enrich UI on the detail page).
 - 2026-05-20 — **D3 DONE** — commit `b496a07`. Detail page has the enrich `<details>` panel + form + downloads, timecode toggle switch, anchor click-to-seek (chapters / todos / decisions / quotes), HTMX poll while in flight. List page has Tags column + tag= filter + clear-filter banner. 185/185 tests pass. Image rebuilt + container restarted; smoke pages 200.
 - 2026-05-20 — moving on to D6 (auto-name + rename).
+- 2026-05-20 — **D6 DONE** — commit `9a99982`. Rename UI (✎ + ✨ + Reset) in the detail header; new POST/DELETE/auto routes; ✨ uses cached enrichment title when available, else single-pattern LLM call gated by the same lock. 6 new tests including Cyrillic Ukrainian filename roundtrip. 191/191 pass. Image rebuilt; rename UI markers verified live.
+- 2026-05-20 — moving on to D4 (project-local Claude Code skill).
