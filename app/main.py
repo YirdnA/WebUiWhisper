@@ -19,6 +19,8 @@ from .deps import csrf_cookie_name, csrf_field_name, issue_csrf
 from .rate_limit import limiter
 from .routes import archive as archive_route
 from .routes import audio as audio_route
+from .routes import enrich as enrich_route
+from .routes import settings_enrich as settings_enrich_route
 from .routes import audit as audit_route
 from .routes import bulk as bulk_route
 from .routes import disk as disk_route
@@ -125,6 +127,8 @@ def create_app() -> FastAPI:
     app.include_router(disk_route.router)
     app.include_router(policy_route.router)
     app.include_router(archive_route.router)
+    app.include_router(enrich_route.router)
+    app.include_router(settings_enrich_route.router)
 
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request):

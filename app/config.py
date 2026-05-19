@@ -42,6 +42,15 @@ class Settings(BaseSettings):
         default=(".wav", ".mp3", ".flac", ".ogg", ".m4a", ".mp4", ".webm", ".aac")
     )
 
+    # ── Tier D: local-LLM enrichment ────────────────────────────────────────
+    ollama_base_url: str = "http://host.docker.internal:11434"
+    enrich_model: str = "qwen2.5:7b"
+    enrich_embed_model: str = "nomic-embed-text"
+    # Settings JSON for per-pattern toggles. Lives on the writable named
+    # volume so it survives container restarts.
+    enrich_settings_path: Path = Path("/var/lib/webuiwhisper/enrich-settings.json")
+    enrich_timeout_sec: int = 1800  # 30-min hard cap per enrich run
+
     @property
     def audit_log_path(self) -> Path:
         return self.log_dir / "webuiwhisper-audit.log"

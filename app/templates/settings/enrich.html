@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Enrich settings — WebUiWhisper{% endblock %}
+{% block content %}
+{% if request.query_params.get("saved") == "1" %}
+  <div class="flash ok">Saved.</div>
+{% endif %}
+
+<header>
+  <h2>Enrich settings</h2>
+  <p>
+    Pick which patterns the local-LLM enrich pipeline computes by default.
+    A run can still trim the set further from the detail-page form.
+    Default model: <code>{{ default_model }}</code>.
+  </p>
+</header>
+
+<form method="post" action="/settings/enrich" class="enrich-settings">
+  <input type="hidden" name="{{ csrf_field_name() }}" value="{{ request.state.csrf_token }}">
+  <fieldset>
+    <legend>Patterns</legend>
+    {% for r in rows %}
+      <label class="enrich-toggle">
+        <input type="checkbox" role="switch" name="pat_{{ r.key }}"
+               {% if r.enabled %}checked{% endif %}>
+        <span class="enrich-key">{{ r.key }}</span>
+        <small class="enrich-desc">{{ r.description }}</small>
+      </label>
+    {% endfor %}
+  </fieldset>
+  <button type="submit">Save</button>
+  <a role="button" class="secondary" href="/transcripts">Cancel</a>
+</form>
+{% endblock %}

@@ -1,0 +1,154 @@
+"""Render an enrichment sidecar (.enrich.json) to human-readable Markdown.
+
+Pure function, no LLM calls — deterministic from the sidecar JSON. Two
+variants are written on every enrich run:
+- `{name}.enrich.md` — prose mode, no timecodes (the human default).
+- `{name}.enrich.timecoded.md` — adds `[HH:MM:SS]` markers on todos /
+  decisions / quotes / chapters where `anchor_sec` is present.
+
+The section order is fixed so re-renders produce minimal diffs.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+
+def _fmt_anchor(sec: Any) -> str:
+    try:
+        s = float(sec)
+    except (TypeError, ValueError):
+        return ""
+    if s < 0:
+        return ""
+    h = int(s // 3600)
+    m = int((s % 3600) // 60)
+    s_int = int(s % 60)
+    return f"{h:02d}:{m:02d}:{s_int:02d}"
+
+
+def _ts_prefix(item: dict, with_timecodes: bool) -> str:
+    if not with_timecodes:
+        return ""
+    anchor = item.get("anchor_sec")
+    if anchor is None:
+        return ""
+    ts = _fmt_anchor(anchor)
+    return f"[{ts}] " if ts else ""
+
+
+def render_enrich_md(sidecar: dict, *, with_timecodes: bool = False) -> str:
+    """Serialize the sidecar into a Markdown report."""
+    patterns = sidecar.get("patterns") or {}
+    parts: list[str] = []
+
+    title = patterns.get("title") or ""
+    if title:
+        parts.append(f"# {title}\n")
+
+    tldr = patterns.get("summary_tldr") or ""
+    if tldr:
+        parts.append(f"_{tldr}_\n")
+
+    summary = patterns.get("summary") or ""
+    if summary:
+        parts.append("## Summary\n")
+        parts.append(summary.rstrip() + "\n")
+
+    main_ideas = patterns.get("main_ideas") or []
+    if main_ideas:
+        parts.append("## Main Ideas\n")
+        for it in main_ideas:
+            parts.append(f"- {it}")
+        parts.append("")
+
+    todos = patterns.get("todos") or []
+    if todos:
+        parts.append("## Todos\n")
+        parts.append("| Who | What | By when |")
+        parts.append("|-----|------|---------|")
+        for t in todos:
+            who = (t.get("who") or "?").strip()
+            what = (t.get("what") or "").replace("|", "\\|").strip()
+            by = t.get("by_when") or ""
+            prefix = _ts_prefix(t, with_timecodes)
+            parts.append(f"| {who} | {prefix}{what} | {by} |")
+        parts.append("")
+
+    decisions = patterns.get("decisions") or []
+    if decisions:
+        parts.append("## Decisions\n")
+        for d in decisions:
+            by = d.get("by") or "?"
+            what = (d.get("what") or "").strip()
+            parts.append(f"- {_ts_prefix(d, with_timecodes)}**{by}**: {what}")
+        parts.append("")
+
+    open_q = patterns.get("open_questions") or []
+    if open_q:
+        parts.append("## Open Questions\n")
+        for q in open_q:
+            parts.append(f"- {q}")
+        parts.append("")
+
+    entities = patterns.get("named_entities") or {}
+    if entities and any(entities.get(k) for k in ("people", "places", "products", "dates")):
+        parts.append("## Named Entities\n")
+        for label, key in (("People", "people"), ("Places", "places"),
+                           ("Products", "products"), ("Dates", "dates")):
+            vals = entities.get(key) or []
+            if vals:
+                parts.append(f"- **{label}:** {', '.join(vals)}")
+        parts.append("")
+
+    chapters = patterns.get("chapters") or []
+    if chapters:
+        parts.append("## Chapters\n")
+        for c in chapters:
+            ts = _fmt_anchor(c.get("start_sec", 0.0))
+            head = f"[{ts}] " if (with_timecodes and ts) else (f"({ts}) " if ts else "")
+            parts.append(f"- {head}**{c.get('title', '').strip()}** — {c.get('summary', '').strip()}")
+        parts.append("")
+
+    quotes = patterns.get("quotes") or []
+    if quotes:
+        parts.append("## Quotes\n")
+        for q in quotes:
+            text = (q.get("text") or "").strip()
+            speaker = q.get("speaker") or "?"
+            parts.append(f"- {_ts_prefix(q, with_timecodes)}_“{text}”_ — **{speaker}**")
+        parts.append("")
+
+    sentiment = patterns.get("sentiment") or {}
+    overall = sentiment.get("overall")
+    per = sentiment.get("per_speaker") or {}
+    if overall or per:
+        parts.append("## Sentiment\n")
+        if overall:
+            parts.append(f"- **Overall:** {overall}")
+        if per:
+            for spk, tone in per.items():
+                parts.append(f"- **{spk}:** {tone}")
+        parts.append("")
+
+    follow_up = patterns.get("follow_up_draft") or ""
+    if follow_up.strip():
+        parts.append("## Follow-up draft\n")
+        parts.append("```")
+        parts.append(follow_up.rstrip())
+        parts.append("```")
+        parts.append("")
+
+    hashtags = patterns.get("hashtags") or []
+    if hashtags:
+        parts.append("---")
+        parts.append(" ".join(hashtags))
+
+    # Footer with provenance.
+    parts.append("")
+    parts.append(
+        f"<!-- Generated by webuiwhisper enrich · model: {sidecar.get('model', '?')}"
+        f" · ran_at: {sidecar.get('ran_at', '?')}"
+        f" · sha256: {(sidecar.get('transcript_sha256') or '')[:12]} -->"
+    )
+
+    return "\n".join(parts) + "\n"

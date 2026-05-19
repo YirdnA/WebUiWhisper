@@ -17,3 +17,9 @@ Plan: `/home/chai/.claude/plans/cp-cannot-stat-env-example-fizzy-sprout.md`
     - `/opt/whisper/watcher/watcher.py` (AUDIO_EXTS, doc-string)
     - `/opt/whisper/watcher/tests/test_watcher_retry.py` (two new tests)
 - 2026-05-20 — moving on to D7 (archive workflow + safe delete + inline download).
+- 2026-05-20 — **D7 DONE** — commit `cb0074b`. Live (11) / Archived (0) tabs render; inline ⬇ buttons present; delete gated behind typed-confirm modal; bulk delete refuses live targets. 170/170 tests pass. Image rebuilt + container restarted.
+- 2026-05-20 — moving on to D2 (enrich backend).
+- 2026-05-20 — **Operator action needed for D2 runtime use:** the host's Ollama (`/bin/ollama serve`, root PID 3548455) listens on `127.0.0.1:11434` only. The webuiwhisper container can resolve `host.docker.internal` → `172.17.0.1` (the docker bridge gateway) thanks to a new `extra_hosts` entry, BUT Ollama itself does not bind to that interface, so `httpx.ConnectTimeout` results. Fix once you return:
+  - Restart Ollama with `OLLAMA_HOST=0.0.0.0:11434` (or specifically `172.17.0.1:11434`). On a systemd-managed install: `sudo systemctl edit ollama` and add `Environment=OLLAMA_HOST=0.0.0.0`. The current process appears not to be under systemd — it's started directly as root.
+  - D2 backend code is written and committed regardless; routes will return 502 with a clear message until Ollama is reachable.
+- 2026-05-20 — webuiwhisper compose now has `/transcripts:rw` (was `:ro`) so sidecar writes succeed. The durability rule is enforced in code: only `*.display_name`, `*.enrich.*`, `*.json.v*` get written; the canonical `{name}.json` is never touched. Container rebuilt and restarted.
