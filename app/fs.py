@@ -89,10 +89,17 @@ def filter_transcripts(
     speakers_max: int | None = None,
     since_epoch: float | None = None,
     until_epoch: float | None = None,
+    tag: str | None = None,
+    settings: "Settings | None" = None,
 ) -> list["TranscriptSummary"]:
-    """In-memory filter over already-loaded transcripts. Empty/None filters are no-ops."""
+    """In-memory filter over already-loaded transcripts. Empty/None filters are no-ops.
+
+    `tag` filters to transcripts whose enrich sidecar carries that hashtag.
+    Requires `settings` to know where the sidecars live. Bad tag → empty out.
+    """
     q_lower = q.lower().strip() if q else ""
     lang_norm = lang.strip().lower() if lang else ""
+    tag_norm = (tag or "").strip().lower()
     out = []
     for t in items:
         if q_lower and q_lower not in t.name.lower():
@@ -107,8 +114,41 @@ def filter_transcripts(
             continue
         if until_epoch is not None and t.mtime > until_epoch:
             continue
+        if tag_norm:
+            if settings is None:
+                continue
+            tags = _read_sidecar_hashtags(t.name, settings)
+            if tag_norm not in {h.lower() for h in tags}:
+                continue
         out.append(t)
     return out
+
+
+def _read_sidecar_hashtags(name: str, settings) -> list[str]:
+    """Cheap fetch of the hashtag list from a transcript's enrich sidecar.
+    Returns [] if no sidecar or no hashtags. Reads the file each time —
+    list pages are infrequent enough that an in-memory cache isn't worth
+    the bookkeeping. Optimise later with a hashtag index if it gets slow.
+    """
+    candidates = [
+        settings.transcripts_dir / f"{name}.enrich.json",
+        settings.transcripts_dir / ARCHIVE_DIRNAME / f"{name}.enrich.json",
+    ]
+    for p in candidates:
+        if not p.is_file():
+            continue
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        tags = (data.get("patterns") or {}).get("hashtags") or []
+        return [str(t) for t in tags if t]
+    return []
+
+
+def transcript_hashtags(name: str, settings) -> list[str]:
+    """Public helper used by list templates to render hashtag chips."""
+    return _read_sidecar_hashtags(name, settings)
 
 
 ARCHIVE_DIRNAME = "archive"

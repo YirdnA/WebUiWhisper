@@ -12,6 +12,7 @@
       <th class="num">Speakers</th>
       <th class="num">Segments</th>
       <th>Model</th>
+      <th class="tags-col">Tags</th>
       <th>Modified</th>
       <th class="row-actions" aria-label="Actions"></th>
     </tr>
@@ -37,6 +38,13 @@
       <td class="num">{{ t.speaker_count }}</td>
       <td class="num">{{ t.segment_count }}</td>
       <td>{{ t.model_used }}</td>
+      <td class="tags-col">
+        {% set tags = t.name | transcript_hashtags %}
+        {% for tag in tags[:3] %}
+          <a class="list-tag" href="/transcripts?view={{ view }}&tag={{ tag | urlencode }}">{{ tag }}</a>
+        {% endfor %}
+        {% if tags|length > 3 %}<span class="muted">+{{ tags|length - 3 }}</span>{% endif %}
+      </td>
       <td title="{{ t.mtime | fmt_ts }}">{{ t.mtime | rel_ts }}</td>
       <td class="row-actions">
         {% if view == "archived" %}

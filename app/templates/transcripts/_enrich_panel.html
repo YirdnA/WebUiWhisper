@@ -1,0 +1,168 @@
+{% set p = enrich.patterns or {} %}
+
+<div class="enrich-panel">
+
+  <header class="enrich-panel-header">
+    {% if p.title %}<h3 class="enrich-title">{{ p.title }}</h3>{% endif %}
+    <label class="enrich-ts-toggle" title="Show timecodes on todos / quotes / chapters">
+      <input type="checkbox" role="switch" id="enrich-ts">
+      <span>Timecodes</span>
+    </label>
+  </header>
+
+  {% if p.summary_tldr %}
+    <p class="enrich-tldr"><em>{{ p.summary_tldr }}</em></p>
+  {% endif %}
+
+  {% if p.summary %}
+    <p class="enrich-summary">{{ p.summary }}</p>
+  {% endif %}
+
+  {% if p.hashtags %}
+    <p class="enrich-hashtags">
+      {% for tag in p.hashtags %}
+        <a class="enrich-chip" href="/transcripts?tag={{ tag | urlencode }}">{{ tag }}</a>
+      {% endfor %}
+    </p>
+  {% endif %}
+
+  <div class="enrich-grid">
+    {% if p.main_ideas %}
+      <section class="enrich-section">
+        <h4>Main ideas</h4>
+        <ul>{% for it in p.main_ideas %}<li>{{ it }}</li>{% endfor %}</ul>
+      </section>
+    {% endif %}
+
+    {% if p.decisions %}
+      <section class="enrich-section">
+        <h4>Decisions</h4>
+        <ul>
+          {% for d in p.decisions %}
+            <li>
+              <strong>{{ d.by or "?" }}:</strong> {{ d.what }}
+              {% if d.anchor_sec is defined and d.anchor_sec is not none %}
+                <button class="enrich-anchor" type="button" data-anchor="{{ d.anchor_sec }}">⏵</button>
+                <span class="enrich-ts-mark" hidden>{{ "%d:%02d"|format((d.anchor_sec or 0)//60, (d.anchor_sec or 0) % 60) }}</span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+  </div>
+
+  {% if p.todos %}
+    <section class="enrich-section">
+      <h4>Todos</h4>
+      <table class="enrich-todos">
+        <thead><tr><th>Who</th><th>What</th><th>By when</th><th></th></tr></thead>
+        <tbody>
+        {% for t in p.todos %}
+          <tr>
+            <td>{{ t.who or "?" }}</td>
+            <td>
+              {{ t.what }}
+              <span class="enrich-ts-mark" hidden>
+                {% if t.anchor_sec is defined and t.anchor_sec is not none %}
+                  [{{ "%d:%02d"|format((t.anchor_sec or 0)//60, (t.anchor_sec or 0) % 60) }}]
+                {% endif %}
+              </span>
+            </td>
+            <td>{{ t.by_when or "" }}</td>
+            <td>
+              {% if t.anchor_sec is defined and t.anchor_sec is not none %}
+                <button class="enrich-anchor" type="button" data-anchor="{{ t.anchor_sec }}" title="Jump to audio">⏵</button>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% endif %}
+
+  {% if p.open_questions %}
+    <section class="enrich-section">
+      <h4>Open questions</h4>
+      <ul>{% for q in p.open_questions %}<li>{{ q }}</li>{% endfor %}</ul>
+    </section>
+  {% endif %}
+
+  {% if p.named_entities %}
+    {% set ne = p.named_entities %}
+    {% if ne.people or ne.places or ne.products or ne.dates %}
+      <section class="enrich-section enrich-entities">
+        <h4>Named entities</h4>
+        {% if ne.people %}<p><strong>People:</strong> {{ ne.people|join(", ") }}</p>{% endif %}
+        {% if ne.places %}<p><strong>Places:</strong> {{ ne.places|join(", ") }}</p>{% endif %}
+        {% if ne.products %}<p><strong>Products:</strong> {{ ne.products|join(", ") }}</p>{% endif %}
+        {% if ne.dates %}<p><strong>Dates:</strong> {{ ne.dates|join(", ") }}</p>{% endif %}
+      </section>
+    {% endif %}
+  {% endif %}
+
+  {% if p.chapters %}
+    <section class="enrich-section">
+      <h4>Chapters</h4>
+      <ul class="enrich-chapters">
+        {% for c in p.chapters %}
+          <li>
+            <button class="enrich-anchor" type="button" data-anchor="{{ c.start_sec }}">
+              {{ "%d:%02d"|format((c.start_sec or 0)//60, (c.start_sec or 0) % 60) }}
+            </button>
+            <strong>{{ c.title }}</strong> — {{ c.summary }}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if p.quotes %}
+    <section class="enrich-section">
+      <h4>Quotes</h4>
+      <ul class="enrich-quotes">
+        {% for q in p.quotes %}
+          <li>
+            <em>“{{ q.text }}”</em> — <strong>{{ q.speaker }}</strong>
+            {% if q.anchor_sec is defined and q.anchor_sec is not none %}
+              <button class="enrich-anchor" type="button" data-anchor="{{ q.anchor_sec }}">⏵</button>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if p.sentiment %}
+    <section class="enrich-section">
+      <h4>Sentiment</h4>
+      <p>
+        <strong>Overall:</strong> {{ p.sentiment.overall or "neutral" }}
+        {% if p.sentiment.per_speaker %}
+          ·
+          {% for spk, tone in p.sentiment.per_speaker.items() %}
+            <span class="enrich-chip">{{ spk }}: {{ tone }}</span>
+          {% endfor %}
+        {% endif %}
+      </p>
+    </section>
+  {% endif %}
+
+  {% if p.follow_up_draft %}
+    <section class="enrich-section">
+      <h4>Follow-up draft</h4>
+      <textarea readonly rows="6" class="enrich-followup">{{ p.follow_up_draft }}</textarea>
+    </section>
+  {% endif %}
+
+  {% if enrich.failures %}
+    <p class="muted">
+      Some patterns failed:
+      {% for k, msg in enrich.failures.items() %}
+        <code title="{{ msg }}">{{ k }}</code>
+      {% endfor %}
+    </p>
+  {% endif %}
+
+</div>

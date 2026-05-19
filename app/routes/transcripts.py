@@ -119,6 +119,7 @@ async def list_view(
     spk_max: str = Query(default="", max_length=4),
     since: str = Query(default="", max_length=10),
     until: str = Query(default="", max_length=10),
+    tag: str = Query(default="", max_length=40),
     view: str = Query(default="live", regex="^(live|archived)$"),
 ):
     spk_min_n = _parse_opt_int(spk_min, lo=0, hi=64, field="spk_min")
@@ -137,6 +138,8 @@ async def list_view(
         speakers_min=spk_min_n, speakers_max=spk_max_n,
         since_epoch=_parse_iso_date(since),
         until_epoch=_parse_iso_date(until, end_of_day=True),
+        tag=tag,
+        settings=settings,
     )
     items.sort(key=lambda t: t.mtime, reverse=True)
     filters = {
@@ -144,6 +147,7 @@ async def list_view(
         "spk_min": spk_min_n if spk_min_n is not None else "",
         "spk_max": spk_max_n if spk_max_n is not None else "",
         "since": since, "until": until,
+        "tag": tag,
     }
     any_filter_active = any(v not in ("", None) for v in filters.values())
     template = "transcripts/_list.html" if _is_htmx(request) else "transcripts/list.html"
@@ -176,6 +180,9 @@ async def detail_view(
         raise HTTPException(status_code=404, detail="transcript not found")
     json_path, archived = found
     payload = load_transcript(json_path)
+    # Load the enrich sidecar if it exists. None when not yet run.
+    from .. import enrich as enrich_mod
+    enrich_data = enrich_mod.read_sidecar(name, settings)
     return _templates(request).TemplateResponse(
         request, "transcripts/detail.html",
         {
@@ -187,6 +194,7 @@ async def detail_view(
             "user": user,
             "page": "transcripts",
             "archived": archived,
+            "enrich": enrich_data,
         },
     )
 

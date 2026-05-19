@@ -25,6 +25,12 @@
   </p>
 </header>
 
+{% if filters.tag %}
+  <div class="flash ok">
+    Filtering by tag <code>{{ filters.tag }}</code> · <a href="/transcripts?view={{ view }}">clear</a>
+  </div>
+{% endif %}
+
 <nav class="view-tabs" aria-label="Transcript view">
   <a href="/transcripts" class="{{ 'active' if view == 'live' else '' }}">Live <span class="count">({{ counts.live }})</span></a>
   <a href="/transcripts?view=archived" class="{{ 'active' if view == 'archived' else '' }}">Archived <span class="count">({{ counts.archived }})</span></a>
@@ -33,6 +39,7 @@
 <form method="get" action="/transcripts" class="filter-bar" role="search">
   <input type="hidden" name="view" value="{{ view }}">
   <div class="filter-grid">
+    {% if filters.tag %}<input type="hidden" name="tag" value="{{ filters.tag }}">{% endif %}
     <label>Search
       <input type="text" name="q" value="{{ filters.q }}" placeholder="filename substring">
     </label>

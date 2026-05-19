@@ -110,6 +110,7 @@ def create_app() -> FastAPI:
     app.state.templates.env.filters["stem"] = _stem
     app.state.templates.env.filters["rel_ts"] = _rel_ts
     app.state.templates.env.filters["display_name"] = _display_name_filter
+    app.state.templates.env.filters["transcript_hashtags"] = _hashtags_filter
     app.mount("/static", StaticFiles(directory=str(here / "static")), name="static")
 
     # Routes
@@ -244,6 +245,12 @@ def _rel_ts(value) -> str:
         return _dt.datetime.fromtimestamp(t, tz=_dt.timezone.utc).strftime("%Y-%m-%d")
     except (OSError, OverflowError, ValueError):
         return str(value)
+
+
+def _hashtags_filter(value) -> list[str]:
+    """List of hashtags for a transcript, or [] if no enrichment sidecar."""
+    from .fs import transcript_hashtags
+    return transcript_hashtags(str(value), get_settings())
 
 
 def _display_name_filter(value) -> str:

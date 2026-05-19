@@ -9,6 +9,12 @@
 {% if request.query_params.get("saved") == "1" %}
   <div class="flash ok">Saved. Earlier version preserved as <code>{{ name }}.json.v{{ request.query_params.get("v") }}</code>.</div>
 {% endif %}
+{% if request.query_params.get("enrich") == "queued" %}
+  <div class="flash ok">
+    Enrichment queued{% if request.query_params.get("pos") %} (position #{{ request.query_params.get("pos") }} in line){% endif %}.
+    This page polls for results every 5 s while a job is in flight.
+  </div>
+{% endif %}
 
 <header>
   <hgroup>
@@ -82,6 +88,46 @@
     Original audio not available (likely past the 6-day backup window).
   </p>
 </header>
+
+<details class="enrich-box" {% if enrich %}open{% endif %}
+         data-name="{{ name }}">
+  <summary>
+    Enrich
+    {% if enrich %}
+      <span class="badge">ran {{ enrich.ran_at }}</span>
+    {% endif %}
+  </summary>
+
+  <div id="enrich-panel">
+    {% if enrich %}
+      {% include "transcripts/_enrich_panel.html" %}
+    {% else %}
+      <p class="muted">
+        No enrichment yet. Run it to extract summary, todos, main ideas,
+        hashtags, chapters, decisions, named entities, and more.
+      </p>
+    {% endif %}
+  </div>
+
+  <form method="post" action="/transcripts/{{ name }}/enrich" class="enrich-form">
+    <input type="hidden" name="{{ csrf_field_name() }}" value="{{ request.state.csrf_token }}">
+    <label>Model
+      <select name="model">
+        <option value="qwen2.5:7b" selected>qwen2.5:7b</option>
+        <option value="qwen2.5-7b-128k">qwen2.5-7b-128k (long)</option>
+        <option value="qwen2.5:3b">qwen2.5:3b (fast)</option>
+      </select>
+    </label>
+    <button type="submit">{% if enrich %}Re-run enrichment{% else %}Enrich{% endif %}</button>
+    {% if enrich %}
+      <a role="button" class="secondary" href="/transcripts/{{ name }}/enrich.md">Download MD</a>
+      <a role="button" class="secondary" href="/transcripts/{{ name }}/enrich.md?ts=1">Download MD (timecoded)</a>
+      <a role="button" class="secondary" href="/transcripts/{{ name }}/enrich.json">Download JSON</a>
+    {% endif %}
+  </form>
+</details>
+<script src="/static/enrich-anchor.js" defer></script>
+<script src="/static/enrich-poll.js" defer></script>
 <ul class="seg-list">
   {% for seg in payload.segments %}
   <li class="seg-item"
