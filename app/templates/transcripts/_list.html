@@ -1,16 +1,19 @@
 {% if items %}
+<div class="table-scroll">
 <table class="transcripts striped">
   <thead>
     <tr>
       <th class="select-col"><input type="checkbox" id="bulk-check-all" aria-label="select all"></th>
+      <th class="dl-col" aria-label="Download"></th>
       <th>Name</th>
       <th>Lang</th>
-      <th class="num">Duration</th>
-      <th class="num">Proc</th>
+      <th class="num" title="Recording duration in minutes">Duration</th>
+      <th class="num" title="Wall-clock time the whisper service spent">Proc</th>
       <th class="num">Speakers</th>
       <th class="num">Segments</th>
       <th>Model</th>
       <th>Modified</th>
+      <th class="row-actions" aria-label="Actions"></th>
     </tr>
   </thead>
   <tbody>
@@ -20,18 +23,75 @@
         <input type="checkbox" class="bulk-check" name="names" value="{{ t.name }}"
                aria-label="select {{ t.name }}">
       </td>
-      <td class="filename"><a href="/transcripts/{{ t.name }}" title="{{ t.name }}">{{ t.name | stem }}</a></td>
+      <td class="dl-col">
+        <a class="dl-inline" href="/transcripts/{{ t.name }}/download.txt"
+           title="Download TXT (one-click) — more formats on detail page"
+           aria-label="Download {{ t.name | display_name }} as TXT">⬇</a>
+      </td>
+      <td class="filename">
+        <a href="/transcripts/{{ t.name }}" title="{{ t.name }}">{{ t.name | display_name }}</a>
+      </td>
       <td>{{ t.language }}</td>
       <td class="num">{{ "%.1f"|format(t.duration_sec / 60) }} m</td>
       <td class="num">{{ "%.1f"|format(t.processing_sec / 60) }} m</td>
       <td class="num">{{ t.speaker_count }}</td>
       <td class="num">{{ t.segment_count }}</td>
       <td>{{ t.model_used }}</td>
-      <td>{{ t.mtime | fmt_ts }}</td>
+      <td title="{{ t.mtime | fmt_ts }}">{{ t.mtime | rel_ts }}</td>
+      <td class="row-actions">
+        {% if view == "archived" %}
+          <form method="post" action="/transcripts/{{ t.name }}/unarchive" class="inline-form">
+            <input type="hidden" name="{{ csrf_field_name() }}" value="{{ request.state.csrf_token }}">
+            <button type="submit" class="secondary outline" title="Restore to live">Restore</button>
+          </form>
+          <button type="button" class="contrast outline delete-trigger"
+                  data-name="{{ t.name }}" data-stem="{{ t.name | stem }}"
+                  data-display="{{ t.name | display_name }}"
+                  title="Delete permanently (requires typed confirmation)">Delete</button>
+        {% else %}
+          <form method="post" action="/transcripts/{{ t.name }}/archive" class="inline-form"
+                onsubmit="return confirm('Archive {{ t.name | display_name }}? You can restore it from the Archived tab.');">
+            <input type="hidden" name="{{ csrf_field_name() }}" value="{{ request.state.csrf_token }}">
+            <button type="submit" class="secondary outline" title="Move to archive">Archive</button>
+          </form>
+        {% endif %}
+      </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+</div>
+
+{% if view == "archived" %}
+<dialog id="delete-modal" class="delete-modal">
+  <form method="post" id="delete-form" class="delete-form">
+    <input type="hidden" name="{{ csrf_field_name() }}" value="{{ request.state.csrf_token }}">
+    <header>
+      <h3>Delete permanently</h3>
+    </header>
+    <p>
+      This will permanently delete the transcript
+      <strong><code id="delete-display"></code></strong>
+      and all its sidecars (enrichment, display name, version snapshots).
+      <br>
+      <strong>This cannot be undone.</strong>
+    </p>
+    <p>
+      To confirm, type the technical stem below:
+      <code id="delete-stem-hint" class="muted"></code>
+    </p>
+    <label>
+      <input type="text" name="confirm" id="delete-confirm" autocomplete="off"
+             placeholder="type the stem to enable">
+    </label>
+    <footer>
+      <button type="button" id="delete-cancel" class="secondary outline">Cancel</button>
+      <button type="submit" id="delete-submit" class="contrast" disabled>Delete permanently</button>
+    </footer>
+  </form>
+</dialog>
+{% endif %}
+
 {% else %}
-<p>No transcripts {% if any_filter_active %}match the current filter{% else %}yet. Upload an audio file to get started{% endif %}.</p>
+<p>No transcripts {% if any_filter_active %}match the current filter{% elif view == "archived" %}in the archive yet{% else %}yet. Upload an audio file to get started{% endif %}.</p>
 {% endif %}

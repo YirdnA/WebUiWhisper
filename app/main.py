@@ -17,6 +17,7 @@ from .config import get_settings
 from .db import init_db
 from .deps import csrf_cookie_name, csrf_field_name, issue_csrf
 from .rate_limit import limiter
+from .routes import archive as archive_route
 from .routes import audio as audio_route
 from .routes import audit as audit_route
 from .routes import bulk as bulk_route
@@ -106,6 +107,7 @@ def create_app() -> FastAPI:
     app.state.templates.env.filters["pretty_name"] = _pretty_name
     app.state.templates.env.filters["stem"] = _stem
     app.state.templates.env.filters["rel_ts"] = _rel_ts
+    app.state.templates.env.filters["display_name"] = _display_name_filter
     app.mount("/static", StaticFiles(directory=str(here / "static")), name="static")
 
     # Routes
@@ -122,6 +124,7 @@ def create_app() -> FastAPI:
     app.include_router(logs_route.router)
     app.include_router(disk_route.router)
     app.include_router(policy_route.router)
+    app.include_router(archive_route.router)
 
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request):
@@ -129,12 +132,17 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def ensure_csrf_cookie(request: Request, call_next):
+        # Resolve settings fresh per request rather than closure-capturing
+        # the create_app()-time value. get_settings() is lru_cached so the
+        # overhead is a function call; this lets tests rebind settings
+        # after module import without the middleware getting a stale view.
+        live_settings = get_settings()
         existing = request.cookies.get(csrf_cookie_name())
         if existing:
             request.state.csrf_token = existing
             new_token = None
         else:
-            new_token = issue_csrf(settings)
+            new_token = issue_csrf(live_settings)
             request.state.csrf_token = new_token
         response = await call_next(request)
         if new_token is not None:
@@ -232,6 +240,19 @@ def _rel_ts(value) -> str:
         return _dt.datetime.fromtimestamp(t, tz=_dt.timezone.utc).strftime("%Y-%m-%d")
     except (OSError, OverflowError, ValueError):
         return str(value)
+
+
+def _display_name_filter(value) -> str:
+    """Resolve a transcript's friendly name: explicit display_name sidecar
+    if set, otherwise pretty_name(value) (timestamp suffix → human form).
+    Imported locally to keep the dep on app.display_name out of the module
+    import graph cycle."""
+    from .display_name import read_display_name
+    name = str(value)
+    explicit = read_display_name(name, get_settings())
+    if explicit:
+        return explicit
+    return _pretty_name(name)
 
 
 app = create_app()

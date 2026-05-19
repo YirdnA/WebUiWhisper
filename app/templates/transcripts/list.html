@@ -7,16 +7,31 @@
     Bulk {{ bulk_done }}: {{ request.query_params.get("n") }} transcript{{ "s" if request.query_params.get("n") != "1" else "" }}.
   </div>
 {% endif %}
+{% set did = request.query_params.get("did") %}
+{% set did_name = request.query_params.get("name") %}
+{% if did == "archive" and did_name %}
+  <div class="flash ok">Archived <code>{{ did_name | display_name }}</code>. <a href="/transcripts?view=archived">View archive →</a></div>
+{% elif did == "unarchive" and did_name %}
+  <div class="flash ok">Restored <code>{{ did_name | display_name }}</code>.</div>
+{% elif did == "delete" and did_name %}
+  <div class="flash ok">Deleted <code>{{ did_name | display_name }}</code>.</div>
+{% endif %}
 
 <header>
   <h2>Transcripts</h2>
   <p>
-    {{ items|length }} transcript{{ "s" if items|length != 1 else "" }}{% if any_filter_active %} (filtered){% endif %}.
+    {{ items|length }} {{ "live" if view == "live" else "archived" }} transcript{{ "s" if items|length != 1 else "" }}{% if any_filter_active %} (filtered){% endif %}.
     Auto-refreshes every 30 s (pauses while something is selected).
   </p>
 </header>
 
+<nav class="view-tabs" aria-label="Transcript view">
+  <a href="/transcripts" class="{{ 'active' if view == 'live' else '' }}">Live <span class="count">({{ counts.live }})</span></a>
+  <a href="/transcripts?view=archived" class="{{ 'active' if view == 'archived' else '' }}">Archived <span class="count">({{ counts.archived }})</span></a>
+</nav>
+
 <form method="get" action="/transcripts" class="filter-bar" role="search">
+  <input type="hidden" name="view" value="{{ view }}">
   <div class="filter-grid">
     <label>Search
       <input type="text" name="q" value="{{ filters.q }}" placeholder="filename substring">
@@ -38,14 +53,14 @@
     <label>From
       <input type="date" name="since" value="{{ filters.since }}">
     </label>
-    <label>To
-      <input type="date" name="until" value="{{ filters.until }}">
+    <label for="filter-to">To
+      <input id="filter-to" type="date" name="until" value="{{ filters.until }}">
     </label>
   </div>
   <div class="filter-actions">
     <button type="submit">Apply</button>
     {% if any_filter_active %}
-      <a role="button" class="secondary" href="/transcripts">Clear</a>
+      <a role="button" class="secondary" href="/transcripts?view={{ view }}">Clear</a>
     {% endif %}
   </div>
 </form>
@@ -56,13 +71,17 @@
 
   <div id="bulk-bar" class="bulk-bar" hidden>
     <strong><span id="bulk-count">0</span> selected</strong>
-    <button type="button" data-bulk-action="archive" class="secondary">Archive</button>
-    <button type="button" data-bulk-action="delete" class="contrast">Delete</button>
+    {% if view == "live" %}
+      <button type="button" data-bulk-action="archive" class="secondary">Archive</button>
+      <span class="muted">(delete is only available on the Archived tab — archive first)</span>
+    {% else %}
+      <button type="button" data-bulk-action="delete" class="contrast">Delete permanently</button>
+    {% endif %}
   </div>
 
   <div
     id="transcripts-table"
-    hx-get="/transcripts?{{ {'q':filters.q,'lang':filters.lang,'spk_min':filters.spk_min,'spk_max':filters.spk_max,'since':filters.since,'until':filters.until} | urlencode }}"
+    hx-get="/transcripts?{{ {'view':view,'q':filters.q,'lang':filters.lang,'spk_min':filters.spk_min,'spk_max':filters.spk_max,'since':filters.since,'until':filters.until} | urlencode }}"
     hx-trigger="every 30s [document.querySelectorAll('.bulk-check:checked').length===0]"
     hx-swap="outerHTML">
     {% include "transcripts/_list.html" %}
@@ -70,4 +89,5 @@
 </form>
 
 <script src="/static/bulk.js" defer></script>
+<script src="/static/delete-confirm.js" defer></script>
 {% endblock %}

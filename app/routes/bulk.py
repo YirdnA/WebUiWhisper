@@ -12,6 +12,7 @@ from fastapi.responses import RedirectResponse
 from ..audit import record as audit_record
 from ..config import Settings
 from ..deps import current_user, require_csrf, settings_dep
+from ..fs import ARCHIVE_DIRNAME, find_transcript_path
 from ..rate_limit import limiter
 
 router = APIRouter(prefix="/transcripts", tags=["bulk"])
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/transcripts", tags=["bulk"])
 log = logging.getLogger("webuiwhisper.bulk")
 
 _NAME_RE = re.compile(r"^(?!\.)[A-Za-z0-9_.\-]{1,210}$")
-_ARCHIVE_DIRNAME = "archive"
+_ARCHIVE_DIRNAME = ARCHIVE_DIRNAME
 ALLOWED_ACTIONS = {"delete", "archive"}
 
 
@@ -57,27 +58,36 @@ def _within(path: Path, base: Path) -> bool:
 
 
 def _delete_one(name: str, settings: Settings) -> dict:
-    """Returns counts of files removed."""
-    transcripts_dir = settings.transcripts_dir
+    """Hard delete — only allowed when the transcript is in `archive/`.
+
+    Safety: callers must have already verified that `{name}` resolves to
+    an archived file (via `find_transcript_path`). This function trusts
+    that and removes from the archive dir + audio backup.
+    """
+    archive_dir = settings.transcripts_dir / _ARCHIVE_DIRNAME
     backup_dir = settings.backup_dir
 
     removed_t = 0
-    for p in _related_paths(transcripts_dir, name):
-        if _within(p, transcripts_dir):
+    # Use _related_paths against the archive dir.
+    for p in _related_paths(archive_dir, name):
+        if _within(p, archive_dir):
             try:
                 p.unlink()
                 removed_t += 1
             except OSError as exc:
                 log.warning("delete failed %s: %s", p, exc)
 
+    # Audio backup may live under archive/audio/ (legacy path used by the
+    # original archive action) — clean that up too. Backup itself is owned
+    # by the watcher's 6-day retention; we only touch the archived copy.
     removed_b = 0
-    audio_in_backup = backup_dir / name
-    if audio_in_backup.is_file() and _within(audio_in_backup, backup_dir):
+    archive_audio = archive_dir / "audio" / name
+    if archive_audio.is_file() and _within(archive_audio, archive_dir):
         try:
-            audio_in_backup.unlink()
+            archive_audio.unlink()
             removed_b = 1
         except OSError as exc:
-            log.warning("backup delete failed %s: %s", audio_in_backup, exc)
+            log.warning("archive audio delete failed %s: %s", archive_audio, exc)
 
     return {"transcripts_removed": removed_t, "audio_removed": removed_b}
 
@@ -137,6 +147,32 @@ async def bulk(
     if not safe_names:
         return RedirectResponse(url="/transcripts", status_code=303)
 
+    # Gate bulk delete: every target must already be archived. We refuse
+    # the entire batch (don't silently drop unarchived names) so the
+    # operator sees a clear failure and re-checks intent.
+    if action == "delete":
+        live_targets = []
+        missing = []
+        for n in safe_names:
+            found = find_transcript_path(n, settings)
+            if not found:
+                missing.append(n)
+                continue
+            _, archived = found
+            if not archived:
+                live_targets.append(n)
+        if live_targets or missing:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "bulk delete refused: "
+                    f"{len(live_targets)} live target(s) must be archived first, "
+                    f"{len(missing)} not found. "
+                    "Archive them from the Live tab, then retry delete on the "
+                    "Archived tab."
+                ),
+            )
+
     ip = _client_ip(request)
     results: list[dict] = []
     for name in safe_names:
@@ -158,7 +194,11 @@ async def bulk(
             f"bulk-{action}", user=user, ip=ip, target=name, ok=True, extra=res,
         )
 
+    # Redirect back to whichever view the bulk action came from. Archive
+    # action goes to Archived tab so the user sees where the items landed;
+    # delete stays on Archived tab so the user sees the resulting list.
+    view = "archived" if action in ("archive", "delete") else "live"
     return RedirectResponse(
-        url=f"/transcripts?bulk_done={action}&n={len(safe_names)}",
+        url=f"/transcripts?view={view}&bulk_done={action}&n={len(safe_names)}",
         status_code=303,
     )

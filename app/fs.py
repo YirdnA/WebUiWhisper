@@ -111,13 +111,19 @@ def filter_transcripts(
     return out
 
 
-def list_transcripts(settings: Settings) -> list[TranscriptSummary]:
+ARCHIVE_DIRNAME = "archive"
+
+
+def _scan_transcripts_in(base: Path) -> list[TranscriptSummary]:
+    """Scan a single directory for `*.json` transcripts. No recursion."""
     out: list[TranscriptSummary] = []
-    base = settings.transcripts_dir
     if not base.is_dir():
         return out
     for entry in os.scandir(base):
         if not entry.is_file() or not entry.name.endswith(".json"):
+            continue
+        # Skip versioned snapshots: foo.flac.json.v3
+        if ".json.v" in entry.name:
             continue
         try:
             with open(entry.path, "r", encoding="utf-8") as fh:
@@ -138,6 +144,60 @@ def list_transcripts(settings: Settings) -> list[TranscriptSummary]:
             segment_count=len(segs),
             model_used=payload.get("model_used", "?"),
         ))
+    return out
+
+
+def list_transcripts(settings: Settings) -> list[TranscriptSummary]:
+    """Live transcripts only — the `archive/` subdir is skipped (it's a
+    directory, not a `.json` file, so `entry.is_file()` already filters it,
+    but the helper is explicit so a future structural change can't silently
+    pull archived rows into the live tab)."""
+    return _scan_transcripts_in(settings.transcripts_dir)
+
+
+def list_archived_transcripts(settings: Settings) -> list[TranscriptSummary]:
+    """Transcripts moved to the archive subdir. Same shape as
+    `list_transcripts`; the caller decides which view to render."""
+    archive_dir = settings.transcripts_dir / ARCHIVE_DIRNAME
+    return _scan_transcripts_in(archive_dir)
+
+
+def find_transcript_path(name: str, settings: Settings) -> tuple[Path, bool] | None:
+    """Resolve `{name}.json` against the live dir, then the archive dir.
+    Returns `(path, archived)` or None if it doesn't exist anywhere.
+
+    `name` is the audio basename (e.g. `foo.flac`), not including `.json`.
+    Caller is responsible for safe-naming via `safe_transcript_path` if the
+    name came from a request."""
+    live = settings.transcripts_dir / f"{name}.json"
+    if live.is_file():
+        return live, False
+    archived = settings.transcripts_dir / ARCHIVE_DIRNAME / f"{name}.json"
+    if archived.is_file():
+        return archived, True
+    return None
+
+
+def transcript_artifact_paths(name: str, settings: Settings, *, archived: bool) -> list[Path]:
+    """All on-disk files associated with `{name}` in the chosen tier:
+    JSON, TXT, version snapshots, enrichment sidecars, display-name sidecar.
+    Does NOT include the audio file (lives in `backup_dir`).
+
+    Used by archive/unarchive/delete plumbing to move/remove a coherent set."""
+    base = settings.transcripts_dir / ARCHIVE_DIRNAME if archived else settings.transcripts_dir
+    out: list[Path] = []
+    candidates = [
+        base / f"{name}.json",
+        base / f"{name}.txt",
+        base / f"{name}.display_name",
+        base / f"{name}.enrich.json",
+        base / f"{name}.enrich.md",
+        base / f"{name}.enrich.timecoded.md",
+    ]
+    for p in candidates:
+        if p.is_file():
+            out.append(p)
+    out.extend(sorted(base.glob(f"{name}.json.v*")))
     return out
 
 

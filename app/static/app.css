@@ -323,3 +323,81 @@ table.audit td.action { font-weight: 600; }
 .flash { padding: .6rem .9rem; border-radius: 6px; margin: .5rem 0; }
 .flash.ok { background: rgba(46, 204, 113, .12); border: 1px solid rgba(46, 204, 113, .4); }
 .flash.err { background: rgba(231, 76, 60, .12); border: 1px solid rgba(231, 76, 60, .4); }
+
+/* D7 — view tabs + per-row archive actions + inline download ----------------- */
+
+.view-tabs {
+  display: flex;
+  gap: .25rem;
+  margin: 0 0 .75rem;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+}
+.view-tabs a {
+  padding: .4rem .9rem;
+  text-decoration: none;
+  color: var(--pico-secondary);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.view-tabs a.active {
+  color: var(--pico-color);
+  border-bottom-color: var(--pico-primary);
+}
+.view-tabs .count { font-size: .85em; opacity: .7; }
+
+.table-scroll {
+  overflow-x: auto;
+  position: relative;
+}
+
+table.transcripts .dl-col { width: 2rem; padding: 0 .25rem; }
+.dl-inline {
+  display: inline-block;
+  text-decoration: none;
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: .2rem .35rem;
+  border-radius: 4px;
+}
+.dl-inline:hover { background: var(--pico-card-sectioning-background-color); }
+
+table.transcripts .row-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+table.transcripts .row-actions form.inline-form { display: inline; margin: 0; }
+table.transcripts .row-actions button {
+  padding: .2rem .6rem;
+  margin: 0 0 0 .25rem;
+  font-size: .85rem;
+}
+table.transcripts tbody tr:hover { background: var(--pico-card-sectioning-background-color); }
+table.transcripts .filename a {
+  display: inline-block;
+  max-width: 24rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+/* Delete modal --------------------------------------------------------------- */
+
+dialog.delete-modal {
+  border: 1px solid rgba(231, 76, 60, .5);
+  border-radius: 10px;
+  background: var(--pico-background-color);
+  color: var(--pico-color);
+  max-width: 36rem;
+  padding: 1.25rem 1.5rem;
+}
+dialog.delete-modal::backdrop { background: rgba(0, 0, 0, .55); }
+dialog.delete-modal h3 { margin: 0 0 .5rem; color: rgba(231, 76, 60, .95); }
+dialog.delete-modal code { background: rgba(255, 255, 255, .05); padding: 0 .3rem; border-radius: 3px; }
+dialog.delete-modal footer {
+  margin-top: 1rem;
+  display: flex;
+  gap: .5rem;
+  justify-content: flex-end;
+}
+dialog.delete-modal footer button { margin: 0; }

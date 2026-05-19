@@ -9,8 +9,11 @@ from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from ..config import Settings
 from ..deps import current_user, settings_dep
 from ..fs import (
+    ARCHIVE_DIRNAME,
     UnsafePathError,
     filter_transcripts,
+    find_transcript_path,
+    list_archived_transcripts,
     list_transcripts,
     load_transcript,
     safe_transcript_path,
@@ -116,11 +119,17 @@ async def list_view(
     spk_max: str = Query(default="", max_length=4),
     since: str = Query(default="", max_length=10),
     until: str = Query(default="", max_length=10),
+    view: str = Query(default="live", regex="^(live|archived)$"),
 ):
     spk_min_n = _parse_opt_int(spk_min, lo=0, hi=64, field="spk_min")
     spk_max_n = _parse_opt_int(spk_max, lo=0, hi=64, field="spk_max")
 
-    items = list_transcripts(settings)
+    # Always compute both counts so the tab labels are accurate.
+    live_items = list_transcripts(settings)
+    archived_items = list_archived_transcripts(settings)
+    counts = {"live": len(live_items), "archived": len(archived_items)}
+
+    items = archived_items if view == "archived" else live_items
     languages = sorted({t.language for t in items if t.language and t.language != "?"})
     items = filter_transcripts(
         items,
@@ -147,6 +156,8 @@ async def list_view(
             "languages": languages,
             "filters": filters,
             "any_filter_active": any_filter_active,
+            "view": view,
+            "counts": counts,
         },
     )
 
@@ -160,12 +171,10 @@ async def detail_view(
     settings: Settings = Depends(settings_dep),
 ):
     name = _safe_name(name)
-    try:
-        json_path = safe_transcript_path(settings.transcripts_dir, f"{name}.json")
-    except UnsafePathError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    if not json_path.is_file():
+    found = find_transcript_path(name, settings)
+    if not found:
         raise HTTPException(status_code=404, detail="transcript not found")
+    json_path, archived = found
     payload = load_transcript(json_path)
     return _templates(request).TemplateResponse(
         request, "transcripts/detail.html",
@@ -177,8 +186,37 @@ async def detail_view(
             "speaker_label": speaker_label,
             "user": user,
             "page": "transcripts",
+            "archived": archived,
         },
     )
+
+
+def _content_disposition(name: str, fmt_ext: str, settings: Settings) -> dict[str, str]:
+    """Build a `Content-Disposition` header that uses the display name (if
+    set via a `{name}.display_name` sidecar; falls back to the pretty
+    timestamp form). UTF-8 friendly per RFC 6266.
+
+    The display-name sidecar is read here (not via a Jinja filter) so the
+    route stays cohesive. Empty / missing sidecar → `pretty_name(name)`.
+    Imports kept local to avoid a circular dep with `app.main`.
+    """
+    import urllib.parse
+    from ..display_name import (
+        read_display_name,
+        sanitize_filename_ascii,
+    )
+    from ..main import _pretty_name as pretty_name_fn
+
+    display = read_display_name(name, settings) or pretty_name_fn(name)
+    base = f"{display}.{fmt_ext}"
+    ascii_safe = sanitize_filename_ascii(display) or sanitize_filename_ascii(name) or "transcript"
+    pct = urllib.parse.quote(base, safe="")
+    return {
+        "Content-Disposition": (
+            f'attachment; filename="{ascii_safe}.{fmt_ext}"; '
+            f"filename*=UTF-8''{pct}"
+        ),
+    }
 
 
 @router.get("/{name}/download.{fmt}")
@@ -209,17 +247,19 @@ async def download(
         raise HTTPException(status_code=400, detail="unsupported format")
     hide_set = _parse_hide(hide)
 
-    try:
-        json_path = safe_transcript_path(settings.transcripts_dir, f"{name}.json")
-    except UnsafePathError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    if not json_path.is_file():
+    found = find_transcript_path(name, settings)
+    if not found:
         raise HTTPException(status_code=404, detail="not found")
+    json_path, _archived = found
+
+    # txt-ts uses ".timecoded.txt" as its actual extension on disk.
+    fmt_ext = "timecoded.txt" if fmt == "txt-ts" else fmt
+    headers = _content_disposition(name, fmt_ext, settings)
 
     if fmt == "json" and not hide_set:
         # Cheap path: no filter → ship the raw file.
         return FileResponse(json_path, media_type="application/json",
-                            filename=f"{name}.json")
+                            headers=headers)
 
     payload = load_transcript(json_path)
     filtered = _filter_segments(payload, hide_set)
@@ -231,7 +271,7 @@ async def download(
         return PlainTextResponse(
             body,
             media_type="application/json; charset=utf-8",
-            headers={"Content-Disposition": f'attachment; filename="{name}.json"'},
+            headers=headers,
         )
 
     if fmt == "txt":
@@ -239,7 +279,7 @@ async def download(
         return PlainTextResponse(
             body,
             media_type="text/plain; charset=utf-8",
-            headers={"Content-Disposition": f'attachment; filename="{name}.txt"'},
+            headers=headers,
         )
 
     if fmt == "txt-ts":
@@ -247,7 +287,7 @@ async def download(
         return PlainTextResponse(
             body,
             media_type="text/plain; charset=utf-8",
-            headers={"Content-Disposition": f'attachment; filename="{name}.timecoded.txt"'},
+            headers=headers,
         )
 
     # fmt == "srt"
@@ -255,5 +295,5 @@ async def download(
     return PlainTextResponse(
         srt,
         media_type="application/x-subrip; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{name}.srt"'},
+        headers=headers,
     )
