@@ -29,3 +29,5 @@ Plan: `/home/chai/.claude/plans/cp-cannot-stat-env-example-fizzy-sprout.md`
 - 2026-05-20 — moving on to D6 (auto-name + rename).
 - 2026-05-20 — **D6 DONE** — commit `9a99982`. Rename UI (✎ + ✨ + Reset) in the detail header; new POST/DELETE/auto routes; ✨ uses cached enrichment title when available, else single-pattern LLM call gated by the same lock. 6 new tests including Cyrillic Ukrainian filename roundtrip. 191/191 pass. Image rebuilt; rename UI markers verified live.
 - 2026-05-20 — moving on to D4 (project-local Claude Code skill).
+- 2026-05-20 — **D4 DONE** — commit `69cdae2`. Project-local skill at `.claude/skills/transcript-enrich/` with SKILL.md + run.py importing app.enrich. .gitignore loosened so skill ships in-repo. CLI verified.
+- 2026-05-20 — moving on to D5 (UI/UX polish).

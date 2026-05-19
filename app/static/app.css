@@ -506,3 +506,47 @@ table.transcripts .tags-col { max-width: 16rem; }
 .rename-form input[name="display_name"] { flex: 1; min-width: 14rem; margin: 0; }
 .rename-form button, .rename-form a { margin: 0; padding: .3rem .9rem; }
 .flash.inline { display: inline-block; padding: .15rem .5rem; }
+
+/* D5 — polish ---------------------------------------------------------------- */
+nav.breadcrumb {
+  font-size: .9em;
+  color: var(--pico-muted-color);
+  margin: .25rem 0 .5rem;
+}
+nav.breadcrumb a { color: var(--pico-secondary); text-decoration: none; }
+nav.breadcrumb a:hover { text-decoration: underline; }
+
+.sidebar-section-heading { margin: .5rem 0 .25rem; font-size: .75em; color: var(--pico-muted-color); text-transform: uppercase; letter-spacing: .05em; }
+nav.sidebar a small.muted { display: block; font-size: .7em; opacity: .65; font-weight: normal; }
+
+.seg-search { margin: .5rem 0; }
+.seg-search summary { cursor: pointer; color: var(--pico-secondary); }
+.seg-search input { margin: .35rem 0 0; max-width: 30rem; }
+
+table.transcripts thead th {
+  position: sticky;
+  top: 0;
+  background: var(--pico-background-color);
+  z-index: 1;
+  box-shadow: 0 1px 0 var(--pico-muted-border-color);
+}
+
+.drop-zone {
+  display: block;
+  border: 2px dashed var(--pico-muted-border-color);
+  border-radius: 8px;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  margin: .75rem 0;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.drop-zone:hover, .drop-zone.dragover {
+  background: var(--pico-card-sectioning-background-color);
+  border-color: var(--pico-primary);
+}
+.drop-zone input[type="file"] {
+  display: block;
+  margin: .75rem auto 0;
+}
+.drop-zone-text { color: var(--pico-muted-color); }

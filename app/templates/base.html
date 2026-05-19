@@ -19,16 +19,17 @@
         </p>
       </hgroup>
       <nav class="sidebar">
-        <a href="/transcripts" class="{{ 'active' if page == 'transcripts' else '' }}">Transcripts</a>
-        <a href="/queue"       class="{{ 'active' if page == 'queue' else '' }}">Queue</a>
+        <a href="/transcripts" class="{{ 'active' if page == 'transcripts' else '' }}">Transcripts <small class="muted">completed</small></a>
+        <a href="/queue"       class="{{ 'active' if page == 'queue' else '' }}">Queue <small class="muted">in flight</small></a>
         <a href="/upload"      class="{{ 'active' if page == 'upload' else '' }}">Upload</a>
-        <a href="/logs"        class="{{ 'active' if page == 'logs' else '' }}">Logs</a>
+        <a href="/logs"        class="{{ 'active' if page == 'logs' else '' }}">System logs</a>
         <a href="/disk"        class="{{ 'active' if page == 'disk' else '' }}">Disk</a>
         <a href="/policy"      class="{{ 'active' if page == 'policy' else '' }}">Policy</a>
-        <a href="/audit"       class="{{ 'active' if page == 'audit' else '' }}">Audit log</a>
+        <a href="/audit"       class="{{ 'active' if page == 'audit' else '' }}">User activity</a>
         <a href="/settings/enrich" class="{{ 'active' if page == 'settings' else '' }}">Enrich settings</a>
       </nav>
       <hr>
+      <h6 class="sidebar-section-heading">Server status</h6>
       <section
         hx-get="/health"
         hx-trigger="load, every 10s"

@@ -16,6 +16,10 @@
   </div>
 {% endif %}
 
+<nav aria-label="Breadcrumb" class="breadcrumb">
+  <a href="/transcripts">Transcripts</a> ›
+  <span>{{ name | display_name }}</span>
+</nav>
 <header>
   <hgroup>
     <h2 class="rename-target" data-name="{{ name }}" style="word-break:break-all" title="{{ name }}">
@@ -58,8 +62,13 @@
        href="/transcripts/{{ name }}/download.json">JSON</a>
     <a role="button" class="secondary" id="dl-srt" data-download
        href="/transcripts/{{ name }}/download.srt">SRT</a>
-    <a role="button" href="/transcripts/{{ name }}/edit">Edit</a>
+    &nbsp;
+    <a role="button" class="contrast" href="/transcripts/{{ name }}/edit">Edit</a>
   </p>
+  <details class="seg-search">
+    <summary>Search this transcript</summary>
+    <input id="seg-filter" type="search" placeholder="Filter segments by substring" autocomplete="off">
+  </details>
 
   {% if speakers %}
   <nav id="speaker-toggle-bar" class="speaker-toggle-bar" data-name="{{ name }}"
@@ -68,7 +77,7 @@
     {% for s in speakers %}
       <label class="speaker-toggle"
              title="Uncheck to hide {{ speaker_label(s) }}'s lines">
-        <input type="checkbox" class="speaker-toggle-input"
+        <input type="checkbox" role="switch" class="speaker-toggle-input"
                data-speaker="{{ s }}" checked>
         <span class="speaker-chip {{ speaker_class(s) }}">{{ speaker_label(s) }}</span>
       </label>
@@ -80,7 +89,7 @@
   {% endif %}
 
   <details class="rediarize-box">
-    <summary>Re-diarize</summary>
+    <summary>Re-diarize <small class="muted">(re-run speaker detection on the original audio)</small></summary>
     <form method="post" action="/rediarize" class="rediarize-form">
       <input type="hidden" name="{{ csrf_field_name() }}" value="{{ request.state.csrf_token }}">
       <input type="hidden" name="name" value="{{ name }}">
@@ -159,4 +168,5 @@
 <script src="/static/audio-sync.js" defer></script>
 <script src="/static/speaker-toggle.js" defer></script>
 <script src="/static/rename.js" defer></script>
+<script src="/static/seg-filter.js" defer></script>
 {% endblock %}
