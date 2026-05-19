@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Logs — WebUiWhisper{% endblock %}
+{% block content %}
+<header>
+  <h2>Logs</h2>
+  <p>Live tail of the upstream services. New lines stream as they appear (~2 s lag).</p>
+
+  <nav class="log-tabs" aria-label="Choose log file">
+    {% for f in files %}
+      <a role="button"
+         class="{{ 'primary' if f == active else 'secondary outline' }}"
+         href="/logs?file={{ f }}">{{ f }}.log</a>
+    {% endfor %}
+  </nav>
+</header>
+
+<div id="log-tail" data-file="{{ active }}" aria-live="polite">
+  <pre id="log" tabindex="0" aria-label="{{ active }}.log live stream"></pre>
+</div>
+
+<script src="/static/log-tail.js" defer></script>
+{% endblock %}

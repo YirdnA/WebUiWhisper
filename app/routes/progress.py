@@ -62,6 +62,12 @@ def _sse(event: str | None, data: str) -> bytes:
 
 
 async def _tail_stream(log_path: Path, request: Request) -> AsyncIterator[bytes]:
+    """SSE generator that streams new content appended to `log_path`.
+
+    Module-public — reused by `app/routes/logs.py` for the operator log-tail
+    page. Emits an initial `hello` event, one `log` event per new non-empty
+    line (with a `phase` tag from `_classify`), keepalive comments every
+    KEEPALIVE_SEC, and an `error` event when the file goes missing."""
     # Initial state: tell client where we are.
     yield _sse("hello", json.dumps({"file": str(log_path), "ts": time.time()}))
 

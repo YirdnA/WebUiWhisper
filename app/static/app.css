@@ -117,6 +117,113 @@ table.transcripts td.filename { word-break: break-all; }
 .spk-7 { background: #d35400; color: #fff; }
 .spk-unknown { background: #444; color: #ddd; }
 
+/* Speaker toggle bar ------------------------------------------------------ */
+
+.speaker-toggle-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .35rem;
+  margin: .5rem 0 1rem 0;
+}
+.speaker-toggle-bar .speaker-toggle-label {
+  color: var(--pico-secondary); font-size: .85rem; margin-right: .25rem;
+}
+label.speaker-toggle {
+  display: inline-flex; align-items: center; gap: .35rem;
+  cursor: pointer; margin: 0; padding: 0;
+  user-select: none;
+}
+label.speaker-toggle input[type="checkbox"] {
+  margin: 0; cursor: pointer;
+  /* Reset Pico's full-width form-control sizing so the box sits next to the chip. */
+  width: 1rem; height: 1rem;
+}
+label.speaker-toggle .speaker-chip {
+  /* Chip lives inside the label; remove the right-margin Pico/seg-list uses
+     so the checkbox and chip read as one unit. */
+  margin-right: 0;
+}
+label.speaker-toggle.off .speaker-chip {
+  opacity: .35; text-decoration: line-through;
+}
+.speaker-toggle-all { padding: .1rem .6rem; font-size: .75rem; }
+
+.seg-list .seg-item[hidden] { display: none; }
+
+.filter-indicator { font-size: .7rem; opacity: .6; margin-left: .25em; }
+
+/* Logs page --------------------------------------------------------------- */
+
+.log-tabs { display: flex; flex-wrap: wrap; gap: .35rem; margin: .5rem 0 1rem 0; }
+.log-tabs a[role="button"] { font-family: var(--ww-mono); font-size: .85rem; }
+
+#log {
+  background: #0d1117; color: #d0d7de;
+  font-family: var(--ww-mono); font-size: .82rem; line-height: 1.35;
+  padding: .65rem .8rem; margin: 0;
+  height: 70vh; overflow: auto; border-radius: 4px;
+  white-space: pre;
+}
+.log-line { white-space: pre-wrap; padding: 0 0 .05rem 0; }
+.log-line.phase-error    { color: #ff7b72; }
+.log-line.phase-done     { color: #7ee787; }
+.log-line.phase-transcribe { color: #79c0ff; }
+.log-line.phase-diarize  { color: #d2a8ff; }
+.log-line.phase-merge    { color: #ffa657; }
+.log-line.phase-info     { color: #8b949e; }
+
+/* Disk page --------------------------------------------------------------- */
+
+table.disk-sizes { font-family: var(--ww-mono); font-size: .9rem; }
+table.disk-sizes td.num { text-align: right; white-space: nowrap; }
+.disk-hist { display: block; width: 100%; max-width: 900px; height: 180px; }
+.disk-hist rect.bar { fill: var(--pico-primary); }
+.disk-hist text.lbl { font-size: 10px; fill: var(--pico-secondary); font-family: var(--ww-mono); }
+
+/* Queue page -------------------------------------------------------------- */
+
+.queue-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: .5rem 0 1rem;
+}
+@media (max-width: 1000px) {
+  .queue-grid { grid-template-columns: 1fr; }
+}
+/* Tables inside a grid column may be wider than the column when populated;
+   let them scroll horizontally rather than blow out the layout. */
+.queue-grid .queue-section { margin: 0; min-width: 0; }
+.queue-grid .queue-section table { display: block; overflow-x: auto; }
+
+.queue-section { margin: 1rem 0 1.5rem; }
+.queue-section h3 { margin: 0 0 .35rem 0; font-size: 1rem; }
+.queue-section .count { color: var(--pico-secondary); font-weight: normal; margin-left: .35rem; }
+.queue-section td.error {
+  max-width: 28rem; word-break: break-word;
+  color: #ff7b72; font-family: var(--ww-mono); font-size: .82rem;
+}
+.queue-section td.actions { white-space: nowrap; }
+.queue-section td.actions form { display: inline; margin: 0 .15rem 0 0; }
+.queue-section td.actions button { padding: .1rem .55rem; font-size: .8rem; }
+
+.status-chip {
+  display: inline-block; padding: 0 .55rem;
+  border-radius: 1rem; font-size: .72rem; line-height: 1.4rem;
+  font-family: var(--ww-mono);
+}
+.status-chip.inflight { background: #79c0ff; color: #0d1117; }
+.status-chip.queued   { background: #444;    color: #ddd; }
+.status-chip.failed   { background: #ff7b72; color: #0d1117; }
+.muted { color: var(--pico-secondary); }
+
+/* Policy page ------------------------------------------------------------- */
+
+.policy-form label { display: block; margin: .5rem 0; }
+.policy-form .hint { font-size: .8rem; color: var(--pico-secondary); margin-top: -.2rem; }
+.policy-form .from-tag {
+  font-size: .7rem; color: var(--pico-secondary);
+  margin-left: .4rem; font-family: var(--ww-mono);
+}
+
 /* Audit -------------------------------------------------------------------- */
 
 table.audit { font-family: var(--ww-mono); font-size: .85rem; }

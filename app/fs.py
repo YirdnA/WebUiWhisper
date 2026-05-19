@@ -177,3 +177,168 @@ def list_queue(settings: Settings) -> list[dict]:
 def load_transcript(json_path: Path) -> dict:
     with open(json_path, "r", encoding="utf-8") as fh:
         return json.load(fh)
+
+
+# ── Queue helpers (dead-letter + in-flight detection) ──────────────────────
+
+FAILED_SUBDIR = "failed"
+INFLIGHT_TAIL_BYTES = 64 * 1024
+
+
+def list_failed(settings: Settings) -> list[dict]:
+    """Files parked in `/calls/failed/` after exhausting the watcher's retry
+    budget. Each entry includes the audio file's stat plus the parsed
+    `{name}.error.txt` sidecar (first_fail, last_fail, attempts, last_error).
+    Missing/malformed sidecars are tolerated."""
+    failed_dir = settings.calls_dir / FAILED_SUBDIR
+    if not failed_dir.is_dir():
+        return []
+    out: list[dict] = []
+    for entry in os.scandir(failed_dir):
+        if entry.is_dir():
+            continue
+        name = entry.name
+        if not name or name.endswith(".error.txt"):
+            continue
+        suffix = Path(name).suffix.lower()
+        if suffix not in settings.allowed_audio_exts:
+            continue
+        try:
+            stat = entry.stat()
+        except OSError:
+            continue
+        sidecar_path = failed_dir / f"{name}.error.txt"
+        info = _parse_error_sidecar(sidecar_path)
+        out.append({
+            "name": name,
+            "size": stat.st_size,
+            "mtime": stat.st_mtime,
+            **info,
+        })
+    out.sort(key=lambda r: r.get("last_fail") or r["mtime"], reverse=True)
+    return out
+
+
+def _parse_error_sidecar(path: Path) -> dict:
+    """Read a `.error.txt` produced by `watcher.dead_letter`. Returns keys
+    `first_fail`, `last_fail`, `attempts`, `last_error`. Missing/unparseable
+    file falls back to placeholders."""
+    fallback = {
+        "first_fail": None,
+        "last_fail": None,
+        "attempts": None,
+        "last_error": "(no sidecar)",
+    }
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return fallback
+    out = dict(fallback)
+    out["last_error"] = ""
+    last_error_lines: list[str] = []
+    capturing_error = False
+    for line in text.splitlines():
+        if capturing_error:
+            last_error_lines.append(line)
+            continue
+        if ":" not in line:
+            continue
+        key, _, val = line.partition(":")
+        key = key.strip().lower()
+        val = val.strip()
+        if key == "first_fail":
+            out["first_fail"] = val or None
+        elif key == "last_fail":
+            out["last_fail"] = val or None
+        elif key == "attempts":
+            try:
+                out["attempts"] = int(val)
+            except ValueError:
+                out["attempts"] = None
+        elif key == "last_error":
+            last_error_lines.append(val)
+            capturing_error = True
+    out["last_error"] = "\n".join(last_error_lines).strip() or "(no sidecar)"
+    return out
+
+
+# Recognise these watcher.log line shapes.
+#   2026-05-14 09:47:43,448 [INFO] watcher :: queued: foo.flac
+#   2026-05-14 09:48:01,000 [INFO] watcher :: retry 1/3 (next in 60s): foo.flac
+#   2026-05-14 09:50:11,123 [INFO] watcher :: ok: foo.flac model=... ...
+#   2026-05-14 09:51:00,500 [ERROR] watcher :: transcription failed: foo.flac
+#   2026-05-14 09:55:10,200 [ERROR] watcher :: DEAD-LETTER (after 3 attempts): foo.flac -> /calls/failed/foo.flac
+_INFLIGHT_PATTERNS: tuple[tuple[str, str], ...] = (
+    (" :: queued: ",                     "queued"),
+    (" :: retry ",                       "retry"),       # "retry 1/3 (...): name"
+    (" :: ok: ",                         "ok"),
+    (" :: transcription failed: ",       "failed"),
+    (" :: DEAD-LETTER ",                 "deadletter"),
+    (" :: skip (already transcribed): ", "ok"),
+)
+
+_TERMINAL_STATES = {"ok", "failed", "deadletter"}
+
+
+def _extract_filename(line: str, marker: str) -> str | None:
+    """Pull the filename suffix from a watcher.log line whose `marker` we
+    already matched. Handles each watcher log shape:
+
+      "watcher :: queued: NAME"
+      "watcher :: ok: NAME model=... ..."        — trailing key=value pairs
+      "watcher :: skip (already transcribed): NAME"
+      "watcher :: transcription failed: NAME"
+      "watcher :: retry N/M (next in Xs): NAME"
+      "watcher :: DEAD-LETTER (after N attempts): NAME -> /calls/failed/NAME"
+    """
+    idx = line.find(marker)
+    if idx < 0:
+        return None
+    tail = line[idx + len(marker):]
+    # Strip the destination half of DEAD-LETTER lines.
+    if " -> " in tail:
+        tail = tail.split(" -> ", 1)[0]
+    # For markers that end with ": " the filename is the token after the
+    # marker. For markers that don't (retry, DEAD-LETTER) the filename comes
+    # after the last ": " in the remaining tail.
+    if not marker.endswith(": "):
+        if ": " in tail:
+            tail = tail.rsplit(": ", 1)[1]
+    tail = tail.strip()
+    if not tail:
+        return None
+    # "ok: NAME model=... wait=... ..." — the filename is the first token.
+    return tail.split()[0]
+
+
+def read_inflight_state(log_path: Path, *, tail_bytes: int = INFLIGHT_TAIL_BYTES) -> dict[str, str]:
+    """Read the last `tail_bytes` of `log_path` and return per-filename
+    in-flight state. Only filenames whose latest event is non-terminal
+    (queued / retry) are included. Bounded, cheap; safe to call on each
+    HTMX poll. Returns `{}` on missing/unreadable file."""
+    try:
+        size = log_path.stat().st_size
+    except OSError:
+        return {}
+    offset = max(0, size - tail_bytes)
+    try:
+        with open(log_path, "rb") as fh:
+            fh.seek(offset)
+            chunk = fh.read(size - offset)
+    except OSError:
+        return {}
+    text = chunk.decode("utf-8", errors="replace")
+    # Drop the leading partial line if we seeked into the middle of one.
+    lines = text.splitlines()
+    if offset > 0 and lines:
+        lines = lines[1:]
+
+    latest: dict[str, str] = {}
+    for line in lines:
+        for marker, state in _INFLIGHT_PATTERNS:
+            if marker in line:
+                name = _extract_filename(line, marker)
+                if name:
+                    latest[name] = state
+                break
+    return {n: s for n, s in latest.items() if s not in _TERMINAL_STATES}

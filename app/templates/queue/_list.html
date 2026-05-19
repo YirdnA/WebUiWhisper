@@ -1,18 +1,103 @@
-{% if items %}
-<table class="transcripts striped">
-  <thead>
-    <tr><th>File</th><th class="num">Size (MB)</th><th>Modified</th></tr>
-  </thead>
-  <tbody>
-    {% for it in items %}
-    <tr>
-      <td class="filename">{{ it.name }}</td>
-      <td class="num">{{ "%.1f"|format(it.size / 1024 / 1024) }}</td>
-      <td>{{ it.mtime | fmt_ts }}</td>
-    </tr>
+{% macro size_human(n) -%}
+  {%- if n < 1024 -%}{{ n }} B
+  {%- elif n < 1024 * 1024 -%}{{ "%.1f"|format(n / 1024) }} KiB
+  {%- elif n < 1024 * 1024 * 1024 -%}{{ "%.1f"|format(n / 1024 / 1024) }} MiB
+  {%- else -%}{{ "%.2f"|format(n / 1024 / 1024 / 1024) }} GiB
+  {%- endif -%}
+{%- endmacro %}
+
+<div class="queue-grid">
+<section class="queue-section queue-inflight">
+  <h3>In flight <span class="count">({{ inflight|length }})</span></h3>
+  {% if inflight %}
+  <table class="transcripts striped">
+    <thead>
+      <tr><th>Name</th><th class="num">Size</th><th>Added</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+    {% for it in inflight %}
+      <tr>
+        <td class="filename">
+          <a href="/logs?file=whisper" title="{{ it.name }}">{{ it.name | stem }}</a>
+        </td>
+        <td class="num">{{ size_human(it.size) }}</td>
+        <td title="{{ it.mtime | fmt_ts }}">{{ it.mtime | rel_ts }}</td>
+        <td><span class="status-chip inflight">in flight</span></td>
+      </tr>
     {% endfor %}
-  </tbody>
-</table>
-{% else %}
-<p>Queue is empty.</p>
-{% endif %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nothing transcribing right now.</p>
+  {% endif %}
+</section>
+
+<section class="queue-section queue-pending">
+  <h3>Pending <span class="count">({{ pending|length }})</span></h3>
+  {% if pending %}
+  <table class="transcripts striped">
+    <thead>
+      <tr><th>Name</th><th class="num">Size</th><th>Added</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+    {% for it in pending %}
+      <tr>
+        <td class="filename">
+          <a href="/logs?file=watcher" title="{{ it.name }}">{{ it.name | stem }}</a>
+        </td>
+        <td class="num">{{ size_human(it.size) }}</td>
+        <td title="{{ it.mtime | fmt_ts }}">{{ it.mtime | rel_ts }}</td>
+        <td><span class="status-chip queued">queued</span></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nothing pending.</p>
+  {% endif %}
+</section>
+
+<section class="queue-section queue-failed">
+  <h3>Failed <span class="count">({{ failed|length }})</span></h3>
+  {% if failed %}
+  <table class="transcripts striped">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th class="num">Size</th>
+        <th class="num">Attempts</th>
+        <th>Last fail</th>
+        <th>Error</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for it in failed %}
+      <tr>
+        <td class="filename" title="{{ it.name }}">{{ it.name | stem }}</td>
+        <td class="num">{{ size_human(it.size) }}</td>
+        <td class="num">{{ it.attempts if it.attempts is not none else "—" }}</td>
+        <td title="{{ it.last_fail or (it.mtime | fmt_ts) }}">{{ it.mtime | rel_ts }}</td>
+        <td class="error" title="{{ it.last_error }}">
+          {{ (it.last_error or "")[:120] }}{% if (it.last_error or "")|length > 120 %}…{% endif %}
+        </td>
+        <td class="actions">
+          <form method="post" action="/queue/failed/{{ it.name }}/retry">
+            <input type="hidden" name="{{ csrf_field_name() }}" value="{{ request.state.csrf_token }}">
+            <button type="submit" class="secondary outline">Retry</button>
+          </form>
+          <form method="post" action="/queue/failed/{{ it.name }}/discard"
+                onsubmit="return confirm('Permanently delete {{ it.name }} and its error log?');">
+            <input type="hidden" name="{{ csrf_field_name() }}" value="{{ request.state.csrf_token }}">
+            <button type="submit" class="contrast">Discard</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No failed jobs.</p>
+  {% endif %}
+</section>
+</div>

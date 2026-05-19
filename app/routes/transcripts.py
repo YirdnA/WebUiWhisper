@@ -18,6 +18,7 @@ from ..fs import (
 from ..rate_limit import limiter
 from ..speaker import speaker_class, speaker_label
 from ..srt import render_srt
+from ..txt import render_txt
 
 router = APIRouter(prefix="/transcripts", tags=["transcripts"])
 
@@ -49,13 +50,46 @@ def _parse_iso_date(s: str | None, *, end_of_day: bool = False) -> float | None:
     return _dt.datetime.combine(d, t, tzinfo=_dt.timezone.utc).timestamp()
 
 
-def _parse_opt_int(s: str, *, lo: int, hi: int, field: str) -> int | None:
-    """Coerce a query-string value to an int. Empty string => None.
+_HIDE_TOKEN_RE = re.compile(r"^[A-Za-z0-9_.\-?]{1,32}$")
 
-    FastAPI's `int | None = Query(...)` rejects empty strings with 422, but
-    the HTML form submits empty fields as `spk_min=&spk_max=`. We accept str
-    here and coerce ourselves so the form round-trips cleanly.
-    """
+
+def _parse_hide(value: str) -> frozenset[str]:
+    """Comma-separated speaker labels to hide. Unsafe / oversized tokens are
+    silently dropped. Empty → empty set (no filtering)."""
+    if not value:
+        return frozenset()
+    out: set[str] = set()
+    for tok in value.split(","):
+        tok = tok.strip()
+        if tok and _HIDE_TOKEN_RE.match(tok):
+            out.add(tok)
+    return frozenset(out)
+
+
+def _filter_segments(payload: dict, hide: frozenset[str]) -> dict:
+    """Return a shallow-copied payload with `segments` filtered. Empty `hide`
+    returns the original payload object (cheap no-op)."""
+    if not hide:
+        return payload
+    segs = payload.get("segments") or []
+    filtered = [s for s in segs if (s.get("speaker") or "?") not in hide]
+    out = dict(payload)
+    out["segments"] = filtered
+    return out
+
+
+def _unique_speakers(payload: dict) -> list[str]:
+    """Sorted, deduplicated speaker labels appearing in the payload. Missing
+    speaker is normalised to `'?'` so it shows up as a chip too."""
+    seen: set[str] = set()
+    for s in payload.get("segments") or []:
+        spk = (s.get("speaker") or "").strip() or "?"
+        seen.add(spk)
+    return sorted(seen)
+
+
+def _parse_opt_int(s: str, *, lo: int, hi: int, field: str) -> int | None:
+    """Coerce a query-string value to an int. Empty string => None."""
     s = (s or "").strip()
     if not s:
         return None
@@ -138,6 +172,7 @@ async def detail_view(
         {
             "name": name,
             "payload": payload,
+            "speakers": _unique_speakers(payload),
             "speaker_class": speaker_class,
             "speaker_label": speaker_label,
             "user": user,
@@ -154,41 +189,69 @@ async def download(
     request: Request,
     user: str = Depends(current_user),
     settings: Settings = Depends(settings_dep),
+    hide: str = Query(default="", max_length=400),
 ):
+    """Generate the requested download.
+
+    Formats:
+        - `json` — full transcript JSON. Fast-path FileResponse when no `hide`
+          filter is active; otherwise generated from the parsed payload.
+        - `txt`  — plain prose (no timecodes). Speaker headers only at speaker
+          change, suppressed entirely when there's <=1 unique speaker.
+        - `txt-ts` — `[start - end] SPK: text` per line, mirrors the on-disk
+          format the whisper service writes.
+        - `srt`  — generated via `render_srt`.
+
+    `hide=spkA,spkB,…` filters segments by speaker label before rendering."""
     name = _safe_name(name)
     fmt = fmt.lower()
-    if fmt not in ("json", "txt", "srt"):
+    if fmt not in ("json", "txt", "txt-ts", "srt"):
         raise HTTPException(status_code=400, detail="unsupported format")
+    hide_set = _parse_hide(hide)
 
-    if fmt == "json":
-        try:
-            path = safe_transcript_path(settings.transcripts_dir, f"{name}.json")
-        except UnsafePathError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        if not path.is_file():
-            raise HTTPException(status_code=404, detail="not found")
-        return FileResponse(path, media_type="application/json",
-                            filename=f"{name}.json")
-
-    if fmt == "txt":
-        try:
-            path = safe_transcript_path(settings.transcripts_dir, f"{name}.txt")
-        except UnsafePathError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        if not path.is_file():
-            raise HTTPException(status_code=404, detail="not found")
-        return FileResponse(path, media_type="text/plain; charset=utf-8",
-                            filename=f"{name}.txt")
-
-    # SRT: generated on the fly from the JSON segments.
     try:
         json_path = safe_transcript_path(settings.transcripts_dir, f"{name}.json")
     except UnsafePathError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not json_path.is_file():
         raise HTTPException(status_code=404, detail="not found")
+
+    if fmt == "json" and not hide_set:
+        # Cheap path: no filter → ship the raw file.
+        return FileResponse(json_path, media_type="application/json",
+                            filename=f"{name}.json")
+
     payload = load_transcript(json_path)
-    srt = render_srt(payload.get("segments") or [])
+    filtered = _filter_segments(payload, hide_set)
+    segments = filtered.get("segments") or []
+
+    if fmt == "json":
+        import json as _json
+        body = _json.dumps(filtered, ensure_ascii=False, indent=2)
+        return PlainTextResponse(
+            body,
+            media_type="application/json; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{name}.json"'},
+        )
+
+    if fmt == "txt":
+        body = render_txt(segments, with_timecodes=False)
+        return PlainTextResponse(
+            body,
+            media_type="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{name}.txt"'},
+        )
+
+    if fmt == "txt-ts":
+        body = render_txt(segments, with_timecodes=True)
+        return PlainTextResponse(
+            body,
+            media_type="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{name}.timecoded.txt"'},
+        )
+
+    # fmt == "srt"
+    srt = render_srt(segments)
     return PlainTextResponse(
         srt,
         media_type="application/x-subrip; charset=utf-8",

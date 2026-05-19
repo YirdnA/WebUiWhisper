@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Disk — WebUiWhisper{% endblock %}
+{% block content %}
+<header>
+  <h2>Disk</h2>
+  <p>Snapshot of the audio and transcripts directories on the host.</p>
+</header>
+
+<table class="disk-sizes striped">
+  <thead>
+    <tr><th>Directory</th><th class="num">Files</th><th class="num">Size</th><th>Path</th></tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td>{{ r.label }}</td>
+      <td class="num">{{ r.files }}</td>
+      <td class="num">{{ r.human }}</td>
+      <td><code>{{ r.path }}</code></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h3>Transcripts created — last 30 days ({{ total_transcripts }} total)</h3>
+
+{% if hist_max == 0 %}
+  <p>No transcripts in the last 30 days.</p>
+{% else %}
+  {% set bar_w = 22 %}{% set gap = 4 %}{% set h = 140 %}
+  {% set total_w = (histogram|length) * (bar_w + gap) %}
+  <svg class="disk-hist" viewBox="0 0 {{ total_w }} {{ h + 30 }}" preserveAspectRatio="xMinYMin meet">
+    {% for d, c in histogram %}
+      {% set bx = loop.index0 * (bar_w + gap) %}
+      {% set bh = ((c * h) / hist_max) | round(0, 'floor') | int %}
+      {% set by = h - bh %}
+      <g>
+        <rect class="bar" x="{{ bx }}" y="{{ by }}" width="{{ bar_w }}" height="{{ bh }}">
+          <title>{{ d }} — {{ c }} transcript{{ "s" if c != 1 else "" }}</title>
+        </rect>
+        {% if c > 0 %}
+          <text class="lbl" x="{{ bx + bar_w / 2 }}" y="{{ by - 2 }}" text-anchor="middle">{{ c }}</text>
+        {% endif %}
+        {% if loop.index0 % 5 == 0 or loop.last %}
+          <text class="lbl" x="{{ bx + bar_w / 2 }}" y="{{ h + 18 }}" text-anchor="middle">
+            {{ d.strftime("%m-%d") }}
+          </text>
+        {% endif %}
+      </g>
+    {% endfor %}
+  </svg>
+{% endif %}
+{% endblock %}

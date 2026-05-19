@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ name }} — WebUiWhisper{% endblock %}
+{% block title %}{{ name | pretty_name }} — WebUiWhisper{% endblock %}
 {% block content %}
 {% if request.query_params.get("rediar") == "queued" %}
   <div class="flash ok">
@@ -12,7 +12,7 @@
 
 <header>
   <hgroup>
-    <h2 style="word-break:break-all">{{ name }}</h2>
+    <h2 style="word-break:break-all" title="{{ name }}">{{ name | pretty_name }}</h2>
     <p>
       lang <strong>{{ payload.language }}</strong>
       ({{ "%.0f"|format((payload.language_confidence or 0) * 100) }}%)
@@ -28,11 +28,34 @@
     </p>
   </hgroup>
   <p>
-    <a role="button" class="secondary" href="/transcripts/{{ name }}/download.txt">Download TXT</a>
-    <a role="button" class="secondary" href="/transcripts/{{ name }}/download.json">Download JSON</a>
-    <a role="button" class="secondary" href="/transcripts/{{ name }}/download.srt">Download SRT</a>
+    <a role="button" class="secondary" id="dl-txt" data-download
+       href="/transcripts/{{ name }}/download.txt">TXT</a>
+    <a role="button" class="secondary" id="dl-txt-ts" data-download
+       href="/transcripts/{{ name }}/download.txt-ts">TXT (timecoded)</a>
+    <a role="button" class="secondary" id="dl-json" data-download
+       href="/transcripts/{{ name }}/download.json">JSON</a>
+    <a role="button" class="secondary" id="dl-srt" data-download
+       href="/transcripts/{{ name }}/download.srt">SRT</a>
     <a role="button" href="/transcripts/{{ name }}/edit">Edit</a>
   </p>
+
+  {% if speakers %}
+  <nav id="speaker-toggle-bar" class="speaker-toggle-bar" data-name="{{ name }}"
+       aria-label="Show / hide speakers">
+    <span class="speaker-toggle-label">Speakers:</span>
+    {% for s in speakers %}
+      <label class="speaker-toggle"
+             title="Uncheck to hide {{ speaker_label(s) }}'s lines">
+        <input type="checkbox" class="speaker-toggle-input"
+               data-speaker="{{ s }}" checked>
+        <span class="speaker-chip {{ speaker_class(s) }}">{{ speaker_label(s) }}</span>
+      </label>
+    {% endfor %}
+    <button type="button" class="speaker-toggle-all secondary outline" id="speaker-show-all">
+      Show all
+    </button>
+  </nav>
+  {% endif %}
 
   <details class="rediarize-box">
     <summary>Re-diarize</summary>
@@ -61,7 +84,10 @@
 </header>
 <ul class="seg-list">
   {% for seg in payload.segments %}
-  <li class="seg-item" data-start="{{ seg.start_sec }}" data-end="{{ seg.end_sec }}">
+  <li class="seg-item"
+      data-start="{{ seg.start_sec }}"
+      data-end="{{ seg.end_sec }}"
+      data-speaker="{{ seg.speaker or '?' }}">
     <span class="ts">{{ seg.start_time }}</span>
     <span class="speaker-chip {{ speaker_class(seg.speaker) }}">{{ speaker_label(seg.speaker) }}</span>
     <span>{{ seg.text }}</span>
@@ -69,4 +95,5 @@
   {% endfor %}
 </ul>
 <script src="/static/audio-sync.js" defer></script>
+<script src="/static/speaker-toggle.js" defer></script>
 {% endblock %}

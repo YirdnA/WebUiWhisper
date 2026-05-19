@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Cleanup policy — WebUiWhisper{% endblock %}
+{% block content %}
+{% if request.query_params.get("saved") == "1" %}
+  <div class="flash ok">Saved. Watcher will pick up the new values on its next sweep.</div>
+{% endif %}
+{% if any_errors %}
+  <div class="flash error">Fix the errors below and resubmit.</div>
+{% endif %}
+
+<header>
+  <h2>Cleanup policy</h2>
+  <p>
+    Hot-reloaded by the <code>whisper-watcher</code> service from
+    <code>{{ policy_path }}</code>. Leave a field blank to revert that one
+    to the env default.
+  </p>
+</header>
+
+<form method="post" action="/policy" class="policy-form" novalidate>
+  <input type="hidden" name="{{ csrf_field_name() }}" value="{{ request.state.csrf_token }}">
+
+  {% for f in fields %}
+    <label>
+      <strong>{{ f.name }}</strong>
+      {% if f.active %}
+        <span class="from-tag">(from policy file)</span>
+      {% else %}
+        <span class="from-tag">(default {{ f.default }})</span>
+      {% endif %}
+      <input type="text" name="{{ f.name }}" value="{{ f.value }}"
+             placeholder="{{ f.default }}"
+             inputmode="decimal"
+             aria-invalid="{{ 'true' if f.error else 'false' }}">
+      <small class="hint">
+        {{ f.help }} Range: {{ f.lo }}–{{ f.hi }}.
+        {% if f.error %}<br><strong>Error:</strong> {{ f.error }}{% endif %}
+      </small>
+    </label>
+  {% endfor %}
+
+  <p>
+    <button type="submit">Save</button>
+    <a role="button" class="secondary outline" href="/policy">Reload</a>
+  </p>
+</form>
+
+{% if current %}
+  <h3>Current policy file</h3>
+  <pre><code>{{ current | tojson(indent=2) }}</code></pre>
+{% else %}
+  <p><em>No policy file yet — watcher is using env defaults.</em></p>
+{% endif %}
+{% endblock %}

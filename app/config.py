@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     backup_dir: Path = Path("/backup")
     state_db_path: Path = Path("/var/lib/webuiwhisper/state.db")
     log_dir: Path = Path("/transcripts")
+    # Hot-reload settings file the watcher reads. Same volume as state_db_path
+    # so webuiwhisper's non-root user can write it without sudo.
+    policy_path: Path = Path("/var/lib/webuiwhisper/policy.json")
 
     session_secret: str = "replace-me-with-a-real-secret"
     remote_user_header: str = "Remote-User"

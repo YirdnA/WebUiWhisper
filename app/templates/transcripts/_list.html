@@ -3,7 +3,7 @@
   <thead>
     <tr>
       <th class="select-col"><input type="checkbox" id="bulk-check-all" aria-label="select all"></th>
-      <th>File</th>
+      <th>Name</th>
       <th>Lang</th>
       <th class="num">Duration</th>
       <th class="num">Proc</th>
@@ -20,7 +20,7 @@
         <input type="checkbox" class="bulk-check" name="names" value="{{ t.name }}"
                aria-label="select {{ t.name }}">
       </td>
-      <td class="filename"><a href="/transcripts/{{ t.name }}">{{ t.name }}</a></td>
+      <td class="filename"><a href="/transcripts/{{ t.name }}" title="{{ t.name }}">{{ t.name | stem }}</a></td>
       <td>{{ t.language }}</td>
       <td class="num">{{ "%.1f"|format(t.duration_sec / 60) }} m</td>
       <td class="num">{{ "%.1f"|format(t.processing_sec / 60) }} m</td>

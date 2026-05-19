@@ -1,12 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Queue — WebUiWhisper{% endblock %}
 {% block content %}
+{% set did = request.query_params.get("did") %}
+{% set did_name = request.query_params.get("name") %}
+{% if did == "retry" and did_name %}
+  <div class="flash ok">Re-queued <code>{{ did_name }}</code>.</div>
+{% elif did == "discard" and did_name %}
+  <div class="flash ok">Discarded <code>{{ did_name }}</code>.</div>
+{% endif %}
+
 <header>
   <h2>Queue</h2>
-  <p>Files waiting to be (or currently being) transcribed. Refreshes every 5 s.</p>
+  <p>Live status of the transcription pipeline. Refreshes every 5 s.</p>
 </header>
-
-{% include "partials/progress_banner.html" %}
 
 <div
   id="queue-table"
@@ -15,4 +21,6 @@
   hx-swap="outerHTML">
   {% include "queue/_list.html" %}
 </div>
+
+{% include "partials/progress_banner.html" %}
 {% endblock %}

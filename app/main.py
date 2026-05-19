@@ -20,8 +20,11 @@ from .rate_limit import limiter
 from .routes import audio as audio_route
 from .routes import audit as audit_route
 from .routes import bulk as bulk_route
+from .routes import disk as disk_route
 from .routes import edit as edit_route
 from .routes import health as health_route
+from .routes import logs as logs_route
+from .routes import policy as policy_route
 from .routes import progress as progress_route
 from .routes import queue as queue_route
 from .routes import rediarize as rediarize_route
@@ -100,6 +103,9 @@ def create_app() -> FastAPI:
     app.state.templates = Jinja2Templates(directory=str(here / "templates"))
     app.state.templates.env.globals["csrf_field_name"] = csrf_field_name
     app.state.templates.env.filters["fmt_ts"] = _fmt_ts
+    app.state.templates.env.filters["pretty_name"] = _pretty_name
+    app.state.templates.env.filters["stem"] = _stem
+    app.state.templates.env.filters["rel_ts"] = _rel_ts
     app.mount("/static", StaticFiles(directory=str(here / "static")), name="static")
 
     # Routes
@@ -113,6 +119,9 @@ def create_app() -> FastAPI:
     app.include_router(rediarize_route.router)
     app.include_router(edit_route.router)
     app.include_router(bulk_route.router)
+    app.include_router(logs_route.router)
+    app.include_router(disk_route.router)
+    app.include_router(policy_route.router)
 
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request):
@@ -156,6 +165,72 @@ def _fmt_ts(value) -> str:
             "%Y-%m-%d %H:%M:%S"
         )
     except (TypeError, ValueError):
+        return str(value)
+
+
+_PRETTY_NAME_RE = __import__("re").compile(
+    r"^(?P<stem>.+?)_(?P<date>\d{4}-\d{2}-\d{2})_(?P<time>\d{2}-\d{2}-\d{2})"
+    r"(?P<ext>\.[A-Za-z0-9]+)?$"
+)
+
+
+def _pretty_name(value) -> str:
+    """Friendly title for transcripts named like `nanotalks_2026-05-12_19-40-56.flac`.
+
+    Output: `nanotalks (2026-05-12 19:40:56)`. The original is returned
+    unchanged if the pattern doesn't match (older / hand-named files)."""
+    s = str(value)
+    m = _PRETTY_NAME_RE.match(s)
+    if not m:
+        return s
+    stem = m.group("stem")
+    date = m.group("date")
+    t = m.group("time").replace("-", ":")
+    return f"{stem} ({date} {t})"
+
+
+def _stem(value) -> str:
+    """Just the room/recording name without the timestamp suffix and extension.
+    `nanotalks_2026-05-12_19-40-56.flac` -> `nanotalks`. Falls back to the
+    filename stem (no extension) if the timestamp pattern doesn't match."""
+    s = str(value)
+    m = _PRETTY_NAME_RE.match(s)
+    if m:
+        return m.group("stem")
+    # No timestamp suffix — strip just the extension.
+    dot = s.rfind(".")
+    return s[:dot] if dot > 0 else s
+
+
+def _rel_ts(value) -> str:
+    """Unix epoch -> short relative string ("5 s ago", "12 min ago",
+    "3 h ago", "yesterday", "YYYY-MM-DD"). Falls back to str(value) on bad input."""
+    import datetime as _dt
+    try:
+        t = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    now = _dt.datetime.now(tz=_dt.timezone.utc).timestamp()
+    delta = now - t
+    if delta < 0:
+        # Clock skew or future timestamp; show absolute date.
+        try:
+            return _dt.datetime.fromtimestamp(t, tz=_dt.timezone.utc).strftime("%Y-%m-%d")
+        except (OSError, OverflowError, ValueError):
+            return str(value)
+    if delta < 60:
+        return f"{int(delta)} s ago"
+    if delta < 3600:
+        return f"{int(delta // 60)} min ago"
+    if delta < 86400:
+        return f"{int(delta // 3600)} h ago"
+    if delta < 86400 * 2:
+        return "yesterday"
+    if delta < 86400 * 7:
+        return f"{int(delta // 86400)} d ago"
+    try:
+        return _dt.datetime.fromtimestamp(t, tz=_dt.timezone.utc).strftime("%Y-%m-%d")
+    except (OSError, OverflowError, ValueError):
         return str(value)
 
 
