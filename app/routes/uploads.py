@@ -32,6 +32,7 @@ ALLOWED_MIMES = {
     "audio/ogg", "audio/vorbis", "audio/opus",
     "audio/mp4", "audio/x-m4a",
     "audio/webm",
+    "audio/aac", "audio/x-aac", "audio/aacp",
     "video/mp4", "video/webm",
     "application/octet-stream",  # last-resort; we already checked the extension
 }

@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     default_model: str = "large-v3"
 
     allowed_audio_exts: tuple[str, ...] = Field(
-        default=(".wav", ".mp3", ".flac", ".ogg", ".m4a", ".mp4", ".webm")
+        default=(".wav", ".mp3", ".flac", ".ogg", ".m4a", ".mp4", ".webm", ".aac")
     )
 
     @property

@@ -27,3 +27,16 @@ def test_timestamped_name_keeps_extension(tmp_settings):
 def test_timestamped_name_rejects_bad_extension(tmp_settings):
     with pytest.raises(UnsafePathError):
         _timestamped_name("malware.exe", tmp_settings)
+
+
+@pytest.mark.parametrize("ext", [".wav", ".mp3", ".flac", ".ogg", ".m4a", ".mp4", ".webm", ".aac"])
+def test_timestamped_name_accepts_supported_extension(tmp_settings, ext):
+    name = _timestamped_name(f"call{ext}", tmp_settings)
+    assert name.endswith(ext)
+
+
+def test_allowed_mimes_includes_aac():
+    from app.routes.uploads import ALLOWED_MIMES
+    assert "audio/aac" in ALLOWED_MIMES
+    assert "audio/x-aac" in ALLOWED_MIMES
+    assert "audio/aacp" in ALLOWED_MIMES
