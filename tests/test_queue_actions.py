@@ -22,7 +22,7 @@ def test_safe_name_accepts_typical_filename():
 
 
 @pytest.mark.parametrize("bad", ["", "../etc/passwd", "../shadow.flac",
-                                  ".hidden.flac", "spaces in name.flac",
+                                  ".hidden.flac",
                                   "/abs.flac"])
 def test_safe_name_rejects_unsafe(bad):
     with pytest.raises(HTTPException):

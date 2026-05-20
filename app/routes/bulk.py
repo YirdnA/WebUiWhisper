@@ -19,7 +19,7 @@ router = APIRouter(prefix="/transcripts", tags=["bulk"])
 
 log = logging.getLogger("webuiwhisper.bulk")
 
-_NAME_RE = re.compile(r"^(?!\.)[A-Za-z0-9_.\-]{1,210}$")
+_NAME_RE = re.compile(r"^(?!\.)(?!.*\.\.)[A-Za-z0-9_.\-, ()]{1,210}$")
 _ARCHIVE_DIRNAME = ARCHIVE_DIRNAME
 ALLOWED_ACTIONS = {"delete", "archive"}
 

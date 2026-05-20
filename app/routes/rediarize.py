@@ -25,7 +25,7 @@ log = logging.getLogger("webuiwhisper.rediarize")
 
 
 def _safe_name(name: str) -> str:
-    if not re.match(r"^(?!\.)[A-Za-z0-9_.\-]{1,210}$", name):
+    if not re.match(r"^(?!\.)(?!.*\.\.)[A-Za-z0-9_.\-, ()]{1,210}$", name):
         raise HTTPException(status_code=400, detail="bad name")
     return name
 

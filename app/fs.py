@@ -16,9 +16,12 @@ from typing import Iterable
 
 from .config import Settings
 
-# Filename allow list: alnum, dot, underscore, dash, space; bounded length.
-# Extension must be in the configured allow list. Reject hidden files.
-_NAME_RE = re.compile(r"^(?!\.)[A-Za-z0-9_.\-]{1,200}$")
+# Filename allow list: alnum, dot, underscore, dash, comma, space, parens;
+# bounded length. Extension must be in the configured allow list. Reject
+# hidden files (leading dot) and any "..":
+# the second negative lookahead blocks path-traversal while still allowing
+# multi-dot filenames like "a.b.c.json".
+_NAME_RE = re.compile(r"^(?!\.)(?!.*\.\.)[A-Za-z0-9_.\-, ()]{1,200}$")
 
 
 class UnsafePathError(ValueError):
@@ -52,7 +55,7 @@ def safe_transcript_path(base: Path, transcript_name: str) -> Path:
     """
     if not transcript_name or "/" in transcript_name or "\\" in transcript_name:
         raise UnsafePathError(f"unsafe transcript name: {transcript_name!r}")
-    if not re.match(r"^(?!\.)[A-Za-z0-9_.\-]{1,210}\.(json|txt)$", transcript_name):
+    if not re.match(r"^(?!\.)(?!.*\.\.)[A-Za-z0-9_.\-, ()]{1,210}\.(json|txt)$", transcript_name):
         raise UnsafePathError(f"unsafe transcript name: {transcript_name!r}")
     candidate = (base / transcript_name).resolve()
     base_resolved = base.resolve()

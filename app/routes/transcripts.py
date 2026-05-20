@@ -36,7 +36,7 @@ def _is_htmx(request: Request) -> bool:
 
 def _safe_name(name: str) -> str:
     # Audio basename: alnum, dot, dash, underscore, dot extension.
-    if not re.match(r"^(?!\.)[A-Za-z0-9_.\-]{1,210}$", name):
+    if not re.match(r"^(?!\.)(?!.*\.\.)[A-Za-z0-9_.\-, ()]{1,210}$", name):
         raise HTTPException(status_code=400, detail="bad transcript name")
     return name
 

@@ -24,7 +24,7 @@ router = APIRouter(prefix="/queue", tags=["queue"])
 
 log = logging.getLogger("webuiwhisper.queue")
 
-_NAME_RE = re.compile(r"^(?!\.)[A-Za-z0-9_.\-]{1,210}$")
+_NAME_RE = re.compile(r"^(?!\.)(?!.*\.\.)[A-Za-z0-9_.\-, ()]{1,210}$")
 
 
 def _safe_name(name: str) -> str:

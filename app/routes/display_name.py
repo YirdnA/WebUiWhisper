@@ -27,7 +27,7 @@ router = APIRouter(prefix="/transcripts", tags=["display_name"])
 
 log = logging.getLogger("webuiwhisper.display_name.route")
 
-_NAME_RE = re.compile(r"^(?!\.)[A-Za-z0-9_.\-]{1,210}$")
+_NAME_RE = re.compile(r"^(?!\.)(?!.*\.\.)[A-Za-z0-9_.\-, ()]{1,210}$")
 
 
 def _safe_name(name: str) -> str:

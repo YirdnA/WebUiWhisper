@@ -19,7 +19,9 @@ def test_simple_filename_ok(tmp_settings):
     "foo.exe",
     "foo",                # no extension
     "foo.txt",            # not audio
-    "spaces are not allowed.flac",
+    # NOTE: spaces / commas / parens are intentionally allowed for human-
+    # named recordings ("21 Apr, 17.32 talk.wav"). Traversal + control
+    # chars stay rejected — see test_safe_name.py.
     "",
     "a" * 250 + ".flac",  # too long
 ])
